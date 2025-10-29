@@ -10,18 +10,18 @@
 
 <body>
     <header>
-        <a class="logotype" href="index.php"><img src="./assets/img/Image.png" alt="logo"></a>
+        <a class="logotype" href="index.php"><img src="./assets/img/logotipo.jpeg" alt="logo"></a>
 
         <div class="search">
             <form id="search-bar" class="search-bar" action="search-results.php" method="GET">
-                <input class="search-placeholder" type="text" name="q" id="search-input-mobile" placeholder="buscar por produtos" required />
+                <input class="search-input" type="text" name="q" id="search-input-mobile" placeholder="buscar por produtos" required />
                 <button class="submit-button" type="submit">
                     <i class="fa-solid fa-magnifying-glass"></i>
                 </button>
             </form>
         </div>
         <div class="affiliate-program">
-            <h3>Programa de Afiliados</h3>
+            <img src="./assets/img/afiliados.jpeg" alt="afiliados">
         </div>
     </header>
     <main class="container">
