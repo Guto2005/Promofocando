@@ -1,19 +1,33 @@
-// Get the button:
-let mybutton = document.getElementById("myBtn");
+const slides = document.querySelector('.slides');
+const imagens = document.querySelectorAll('.slides img');
+const dots = document.querySelectorAll('.dot');
 
-// When the user scrolls down 20px from the top of the document, show the button
-window.onscroll = function() {scrollFunction()};
+let index = 0;
 
-function scrollFunction() {
-  if (document.body.scrollTop > 20 || document.documentElement.scrollTop > 20) {
-    mybutton.style.display = "block";
-  } else {
-    mybutton.style.display = "none";
-  }
+function mostrarSlide(novoIndex) {
+  index = novoIndex;
+  slides.style.transform = `translateX(${-index * 100}%)`;
+  atualizarDots();
 }
 
-// When the user clicks on the button, scroll to the top of the document
-function topFunction() {
-  document.body.scrollTop = 0; // For Safari
-  document.documentElement.scrollTop = 0; // For Chrome, Firefox, IE and Opera
+function atualizarDots() {
+  dots.forEach((dot, i) => {
+    dot.classList.toggle('active', i === index);
+  });
 }
+
+// Clique nos indicadores
+dots.forEach((dot, i) => {
+  dot.addEventListener('click', () => {
+    mostrarSlide(i);
+  });
+});
+
+// Autoplay
+setInterval(() => {
+  index = (index + 1) % imagens.length;
+  mostrarSlide(index);
+}, 5000);
+
+// Inicializa
+mostrarSlide(0);
