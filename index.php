@@ -23,20 +23,28 @@
         <div class="affiliate-program">
             <img src="./assets/img/afiliados.jpeg" alt="afiliados">
         </div>
+        <nav class="nav-links">
+            <a href="./pages/login.php" class="login-btn">Área Administrativa</a>
+        </nav>
     </header>
     <main class="container">
         <div class="highlights">
-            <div class="slideshow-container">
-                <div class="slides">
-                    <img src="assets/img/img1.jpeg" alt="imagem1">
-                    <img src="assets/img/img2.jpeg" alt="imagem2">
+            <div class="slideshow-wrapper">
+                <div class="slideshow-container">
+                    <div class="slides">
+                        <img src="assets/img/img1.jpeg" alt="imagem1">
+                        <img src="assets/img/img2.jpeg" alt="imagem2">
+                    </div>
+                    <div class="indicadores">
+                        <span class="dot active"></span>
+                        <span class="dot"></span>
+                    </div>
                 </div>
-                <!-- Indicadores -->
-                <div class="indicadores">
-                    <span class="dot active"></span>
-                    <span class="dot"></span>
-                </div>
+
+                <!-- botão em cima do slide -->
+                <button class="btn-slide">Ver Mais</button>
             </div>
+
             <div class="highlight-cards">
                 <div class="card-1">
                     <h3>Seu fone de ouvido esta aqui</h3>
