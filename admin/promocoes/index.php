@@ -25,6 +25,7 @@ $promocoes = $pdo->query("SELECT * FROM promocoes ORDER BY idPromocao DESC")->fe
         <a href="../dashboard/">🏠 Dashboard</a>
         <a href="../promocoes/">💰 Promoções</a>
         <a href="../novidades/">📰 Novidades</a>
+        <a href="../lojas/">🏪 Lojas</a>
         <a href="../logout.php">🚪 Sair</a>
     </nav>
 </header>
