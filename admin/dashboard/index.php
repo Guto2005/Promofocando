@@ -7,9 +7,14 @@ if (!isset($_SESSION['usuario'])) {
     exit;
 }
 
-// Contagens
+// Contagens das tabelas
 $totalPromocoes = $pdo->query("SELECT COUNT(*) FROM promocoes")->fetchColumn();
 $totalNovidades = $pdo->query("SELECT COUNT(*) FROM novidades")->fetchColumn();
+$totalProdutos = $pdo->query("SELECT COUNT(*) FROM produtos")->fetchColumn();
+$totalLojas = $pdo->query("SELECT COUNT(*) FROM lojas")->fetchColumn();
+$totalCategorias = $pdo->query("SELECT COUNT(*) FROM categorias")->fetchColumn();
+$totalSubcategorias = $pdo->query("SELECT COUNT(*) FROM subcategorias")->fetchColumn();
+
 $dataHoje = date('d/m/Y H:i');
 ?>
 
@@ -19,6 +24,42 @@ $dataHoje = date('d/m/Y H:i');
     <meta charset="UTF-8">
     <title>Painel Administrativo - Promofocando</title>
     <link rel="stylesheet" href="../../assets/css/admin.css">
+    <style>
+        main {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        .card {
+            flex: 1 1 200px;
+            background: #fff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+        }
+
+        .card h3 {
+            margin-top: 0;
+            margin-bottom: 10px;
+            font-size: 1.2em;
+            color: #333;
+        }
+
+        .card p {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #000;
+        }
+
+        section#info-geral {
+            margin-top: 20px;
+            flex-basis: 100%;
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 10px;
+        }
+    </style>
 </head>
 <body>
 
@@ -26,19 +67,45 @@ $dataHoje = date('d/m/Y H:i');
     <h1>Painel Administrativo</h1>
     <nav>
         <a href="../dashboard/">🏠 Dashboard</a>
+        <a href="../produtos/">📦 Produtos</a>
         <a href="../promocoes/">💰 Promoções</a>
         <a href="../novidades/">📰 Novidades</a>
         <a href="../lojas/">🏪 Lojas</a>
+        <a href="../categorias/">📂 Categorias</a>
+        <a href="../subcategorias/">📁 Subcategorias</a>
         <a href="../logout.php">🚪 Sair</a>
     </nav>
 </header>
 
 <main>
-    <section>
-        <h2>Resumo Geral</h2>
-        <p><strong>Promoções:</strong> <?= $totalPromocoes ?></p>
-        <p><strong>Novidades:</strong> <?= $totalNovidades ?></p>
-        <p><strong>Último acesso:</strong> <?= $dataHoje ?></p>
+    <div class="card">
+        <h3>Total de Produtos</h3>
+        <p><?= $totalProdutos ?></p>
+    </div>
+    <div class="card">
+        <h3>Total de Lojas</h3>
+        <p><?= $totalLojas ?></p>
+    </div>
+    <div class="card">
+        <h3>Total de Categorias</h3>
+        <p><?= $totalCategorias ?></p>
+    </div>
+    <div class="card">
+        <h3>Total de Subcategorias</h3>
+        <p><?= $totalSubcategorias ?></p>
+    </div>
+    <div class="card">
+        <h3>Total de Promoções</h3>
+        <p><?= $totalPromocoes ?></p>
+    </div>
+    <div class="card">
+        <h3>Total de Novidades</h3>
+        <p><?= $totalNovidades ?></p>
+    </div>
+
+    <section id="info-geral">
+        <h3>Último acesso</h3>
+        <p><?= $dataHoje ?></p>
     </section>
 </main>
 

@@ -113,9 +113,12 @@ $lojas = $pdo->query("SELECT * FROM lojas ORDER BY idLoja DESC")->fetchAll(PDO::
         <h1>Gerenciar Lojas</h1>
         <nav>
             <a href="../dashboard/">🏠 Dashboard</a>
+            <a href="../produtos/">📦 Produtos</a>
             <a href="../promocoes/">💰 Promoções</a>
             <a href="../novidades/">📰 Novidades</a>
             <a href="../lojas/">🏪 Lojas</a>
+            <a href="../categorias/">📂 Categorias</a>
+            <a href="../subcategorias/">📁 Subcategorias</a>
             <a href="../logout.php">🚪 Sair</a>
         </nav>
     </header>

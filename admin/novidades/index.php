@@ -7,96 +7,92 @@ if (!isset($_SESSION['usuario'])) {
     exit;
 }
 
-// =====================
-// 🗑️ Deletar novidade
-// =====================
-if (isset($_GET['delete'])) {
-    $id = (int)$_GET['delete'];
-    $stmt = $pdo->prepare("DELETE FROM novidades WHERE idNovidade = ?");
-    $stmt->execute([$id]);
-    header("Location: index.php?msg=deletado");
-    exit;
-}
+// ======================
+// TRATAMENTO AJAX CRUD
+// ======================
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['acao'])) {
+    header('Content-Type: application/json');
+    $acao = $_POST['acao'];
 
-// =====================
-// ✏️ Atualizar novidade
-// =====================
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['editar_id']) && $_POST['editar_id'] !== '') {
-    $id = $_POST['editar_id'];
-    $titulo = $_POST['titulo'];
-    $conteudo = $_POST['conteudo'];
-    $link = $_POST['link'];
-    $dataPublicacao = date('Y-m-d');
+    // EDITAR
+    if ($acao === 'editar') {
+        $idProduto = $_POST['idProduto'] ?? null;
+        $nomeProduto = $_POST['nomeProduto'] ?? null;
+        $linkProduto = $_POST['linkProduto'] ?? null;
+        $idCategoria = $_POST['idCategoria'] ?? null;
+        $idSubcategoria = $_POST['idSubcategoria'] ?? null;
 
-    // Lógica da imagem
-    if (isset($_POST['imagem_url']) && trim($_POST['imagem_url']) !== '') {
-        $imagem = trim($_POST['imagem_url']);
-    } elseif (!empty($_FILES['imagem']['name'])) {
-        $nomeArquivo = uniqid() . "_" . basename($_FILES['imagem']['name']);
-        $caminho = "../../uploads/" . $nomeArquivo;
-        move_uploaded_file($_FILES['imagem']['tmp_name'], $caminho);
-        $imagem = $nomeArquivo;
-    } else {
-        $imagem = $_POST['imagem_atual']; // mantém a imagem antiga
+        if ($idProduto && $nomeProduto && $idCategoria) {
+            $stmt = $pdo->prepare("UPDATE produtos SET nomeProduto=?, linkProduto=?, idCategoria=?, idSubcategoria=? WHERE idProduto=?");
+            $res = $stmt->execute([$nomeProduto, $linkProduto, $idCategoria, $idSubcategoria, $idProduto]);
+            echo json_encode(['sucesso' => $res]);
+            exit;
+        } else {
+            echo json_encode(['sucesso' => false, 'msg' => 'Dados incompletos']);
+            exit;
+        }
     }
 
-    $stmt = $pdo->prepare("UPDATE novidades SET titulo=?, conteudo=?, imagemNovidade=?, linkNovidade=?, dataPublicacao=? WHERE idNovidade=?");
-    $stmt->execute([$titulo, $conteudo, $imagem, $link, $dataPublicacao, $id]);
-
-    header("Location: index.php?msg=atualizado");
-    exit;
-}
-
-// =====================
-// ➕ Inserir nova novidade
-// =====================
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['titulo']) && empty($_POST['editar_id'])) {
-    $titulo = $_POST['titulo'];
-    $conteudo = $_POST['conteudo'];
-    $link = $_POST['link'];
-    $dataPublicacao = date('Y-m-d');
-
-    // Upload ou link
-    if (isset($_POST['imagem_url']) && trim($_POST['imagem_url']) !== '') {
-        $imagem = trim($_POST['imagem_url']);
-    } elseif (!empty($_FILES['imagem']['name'])) {
-        $nomeArquivo = uniqid() . "_" . basename($_FILES['imagem']['name']);
-        $caminho = "../../uploads/" . $nomeArquivo;
-        move_uploaded_file($_FILES['imagem']['tmp_name'], $caminho);
-        $imagem = $nomeArquivo;
-    } else {
-        $imagem = null;
+    // EXCLUIR 1
+    if ($acao === 'excluir') {
+        $idProduto = $_POST['idProduto'] ?? null;
+        if ($idProduto) {
+            $stmt = $pdo->prepare("DELETE FROM produtos WHERE idProduto=?");
+            $res = $stmt->execute([$idProduto]);
+            echo json_encode(['sucesso' => $res]);
+            exit;
+        } else {
+            echo json_encode(['sucesso' => false, 'msg' => 'ID inválido']);
+            exit;
+        }
     }
 
-    $stmt = $pdo->prepare("INSERT INTO novidades (titulo, conteudo, imagemNovidade, linkNovidade, dataPublicacao) VALUES (?, ?, ?, ?, ?)");
-    $stmt->execute([$titulo, $conteudo, $imagem, $link, $dataPublicacao]);
-
-    header("Location: index.php?msg=criado");
-    exit;
+    // EXCLUIR MÚLTIPLOS
+    if ($acao === 'excluir_multiplos') {
+        $ids = $_POST['ids'] ?? null;
+        if ($ids) {
+            $idsArray = array_map('intval', explode(',', $ids));
+            $placeholders = implode(',', array_fill(0, count($idsArray), '?'));
+            $stmt = $pdo->prepare("DELETE FROM produtos WHERE idProduto IN ($placeholders)");
+            $res = $stmt->execute($idsArray);
+            echo json_encode(['sucesso' => $res]);
+            exit;
+        } else {
+            echo json_encode(['sucesso' => false, 'msg' => 'Nenhum ID enviado']);
+            exit;
+        }
+    }
 }
 
-// =====================
-// 📋 Listar novidades
-// =====================
-$novidades = $pdo->query("SELECT * FROM novidades ORDER BY idNovidade DESC")->fetchAll(PDO::FETCH_ASSOC);
+// ======================
+// CARREGAR DADOS PARA A TABELA
+// ======================
+
+// Configuração: dias que um produto fica como novidade
+$novidadeDias = 10;
+
+// Buscar produtos recentes
+$novidades = $pdo->prepare("
+    SELECT p.*, c.nomeCategoria, s.nomeSubcategoria
+    FROM produtos p
+    LEFT JOIN categorias c ON p.idCategoria=c.idCategoria
+    LEFT JOIN subcategorias s ON p.idSubcategoria=s.idSubcategoria
+    WHERE p.dataCadastro >= DATE_SUB(NOW(), INTERVAL ? DAY)
+    ORDER BY p.dataCadastro DESC
+");
+$novidades->execute([$novidadeDias]);
+$novidades = $novidades->fetchAll(PDO::FETCH_ASSOC);
+
+// Buscar categorias e subcategorias
+$categorias = $pdo->query("SELECT * FROM categorias ORDER BY nomeCategoria ASC")->fetchAll(PDO::FETCH_ASSOC);
+$subcategorias = $pdo->query("SELECT * FROM subcategorias ORDER BY nomeSubcategoria ASC")->fetchAll(PDO::FETCH_ASSOC);
 
 // Mensagem de feedback
 $msg = '';
 $alertClass = '';
 if (isset($_GET['msg'])) {
     switch ($_GET['msg']) {
-        case 'criado':
-            $msg = "✅ Novidade adicionada com sucesso!";
-            $alertClass = "success";
-            break;
-        case 'atualizado':
-            $msg = "✏️ Novidade atualizada com sucesso!";
-            $alertClass = "updated";
-            break;
-        case 'deletado':
-            $msg = "🗑️ Novidade excluída com sucesso!";
-            $alertClass = "deleted";
-            break;
+        case 'sucesso': $msg = "✅ Operação realizada com sucesso!"; $alertClass = "success"; break;
     }
 }
 ?>
@@ -104,9 +100,30 @@ if (isset($_GET['msg'])) {
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-    <meta charset="UTF-8">
-    <title>Gerenciar Novidades - Promofocando</title>
-    <link rel="stylesheet" href="../../assets/css/admin.css">
+<meta charset="UTF-8">
+<title>Gerenciar Novidades - Promofocando</title>
+<link rel="stylesheet" href="../../assets/css/admin.css">
+<style>
+body { display:flex; margin:0; font-family:sans-serif; }
+header { width:100%; padding:10px; background:#222; color:#fff; position:fixed; top:0; left:0; z-index:10; }
+header h1 { margin:0; font-size:18px; display:inline-block; }
+header nav { display:inline-block; margin-left:20px; }
+header nav a { color:#fff; margin-right:10px; text-decoration:none; }
+#sidebar { width:220px; background:#f0f0f0; padding:10px; border-right:1px solid #ccc; margin-top:60px; height:calc(100vh - 60px); overflow-y:auto; }
+#sidebar h2 { margin-top:10px; }
+#sidebar button { width:100%; text-align:left; margin:3px 0; padding:5px; cursor:pointer; background:#fff; border:1px solid #ccc; }
+#sidebar .sub { margin-left:10px; display:none; }
+main { flex:1; padding:20px; margin-top:60px; overflow-x:auto; }
+#filtros { margin-bottom:10px; display:flex; gap:10px; flex-wrap:wrap; background:#f9f9f9; padding:10px; border:1px solid #ccc; }
+#filtros input { padding:5px; width:150px; }
+#filtros button { padding:5px 10px; }
+table { width:100%; border-collapse:collapse; }
+table th, table td { border:1px solid #ccc; padding:5px; text-align:left; }
+.alert { padding:10px; margin-bottom:10px; }
+.success { background:#d4edda; color:#155724; }
+img { max-width:60px; max-height:60px; }
+button { cursor:pointer; }
+</style>
 </head>
 <body>
 
@@ -114,133 +131,221 @@ if (isset($_GET['msg'])) {
     <h1>Gerenciar Novidades</h1>
     <nav>
         <a href="../dashboard/">🏠 Dashboard</a>
+        <a href="../produtos/">📦 Produtos</a>
         <a href="../promocoes/">💰 Promoções</a>
         <a href="../novidades/">📰 Novidades</a>
+        <a href="../lojas/">🏪 Lojas</a>
+        <a href="../categorias/">📂 Categorias</a>
+        <a href="../subcategorias/">📁 Subcategorias</a>
         <a href="../logout.php">🚪 Sair</a>
     </nav>
 </header>
 
-<main>
-    <h2>Lista de Novidades</h2>
+<div style="display:flex; width:100%; margin-top:60px;">
+    <div id="sidebar">
+        <h2>Categorias</h2>
+        <?php foreach($categorias as $cat): ?>
+            <button class="cat-btn" onclick="toggleSubcategoria(<?= $cat['idCategoria'] ?>)">
+                <?= htmlspecialchars($cat['nomeCategoria']) ?>
+            </button>
+            <div class="sub" id="sub-<?= $cat['idCategoria'] ?>">
+            <?php foreach($subcategorias as $sub): ?>
+                <?php if($sub['idCategoria'] == $cat['idCategoria']): ?>
+                    <button class="sub-btn" onclick="filtrarCategoria(<?= $cat['idCategoria'] ?>, <?= $sub['idSubcategoria'] ?>)">
+                        <?= htmlspecialchars($sub['nomeSubcategoria']) ?>
+                    </button>
+                <?php endif; ?>
+            <?php endforeach; ?>
+            </div>
+        <?php endforeach; ?>
+        <button onclick="filtrarCategoria(null,null)">Mostrar Todos</button>
+    </div>
 
-    <?php if ($msg): ?>
-        <div class="alert <?= htmlspecialchars($alertClass) ?>">
-            <?= htmlspecialchars($msg) ?>
+    <main>
+        <?php if ($msg): ?>
+        <div class="alert <?= htmlspecialchars($alertClass) ?>"><?= htmlspecialchars($msg) ?></div>
+        <?php endif; ?>
+
+        <div id="filtros">
+            <input type="text" id="filtroID" placeholder="Filtrar por ID">
+            <input type="text" id="filtroTitulo" placeholder="Filtrar por Nome">
+            <input type="text" id="filtroData" placeholder="Filtrar por Data (dd/mm/aaaa)">
+            <button onclick="aplicarFiltros()">Aplicar Filtros</button>
+            <button onclick="limparFiltros()">Limpar Filtros</button>
         </div>
-    <?php endif; ?>
 
-    <button class="btn-add" onclick="abrirModal()">+ Adicionar Novidade</button>
+        <button id="btnExcluirSelecionados" onclick="excluirSelecionados()">🗑️ Excluir Selecionados</button>
 
-    <table>
-        <thead>
-            <tr>
-                <th>ID</th>
-                <th>Título</th>
-                <th>Imagem</th>
-                <th>Link</th>
-                <th>Data</th>
-                <th>Ações</th>
-            </tr>
-        </thead>
-        <tbody>
-            <?php foreach ($novidades as $nov): ?>
+        <table id="novidadesTable">
+            <thead>
                 <tr>
-                    <td><?= $nov['idNovidade'] ?></td>
-                    <td><?= htmlspecialchars($nov['titulo']) ?></td>
+                    <th><input type="checkbox" id="checkAll" onclick="marcarTodos(this)"></th>
+                    <th>ID</th>
+                    <th>Nome</th>
+                    <th>Categoria</th>
+                    <th>Subcategoria</th>
+                    <th>Imagem</th>
+                    <th>Link</th>
+                    <th>Data Cadastro</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ($novidades as $prod): ?>
+                <tr data-idcat="<?= $prod['idCategoria'] ?>" data-idsub="<?= $prod['idSubcategoria'] ?>" data-id="<?= $prod['idProduto'] ?>">
+                    <td><input type="checkbox" class="checkItem" value="<?= $prod['idProduto'] ?>"></td>
+                    <td><?= $prod['idProduto'] ?></td>
+                    <td><?= htmlspecialchars($prod['nomeProduto']) ?></td>
+                    <td><?= htmlspecialchars($prod['nomeCategoria']) ?></td>
+                    <td><?= htmlspecialchars($prod['nomeSubcategoria']) ?></td>
                     <td>
-                        <?php if (preg_match('/^https?:/', $nov['imagemNovidade'])): ?>
-                            <img src="<?= htmlspecialchars($nov['imagemNovidade']) ?>" width="60">
-                        <?php elseif (!empty($nov['imagemNovidade'])): ?>
-                            <img src="../../uploads/<?= htmlspecialchars($nov['imagemNovidade']) ?>" width="60">
+                        <?php if (!empty($prod['imagemProduto'])): ?>
+                           <img src="<?= htmlspecialchars($prod['imagemProduto']) ?>" alt="Imagem Produto">
                         <?php endif; ?>
                     </td>
-                    <td><a href="<?= htmlspecialchars($nov['linkNovidade']) ?>" target="_blank">Abrir</a></td>
-                    <td><?= date('d/m/Y', strtotime($nov['dataPublicacao'])) ?></td>
+                    <td><a href="<?= htmlspecialchars($prod['linkProduto'] ?? '#') ?>" target="_blank">Abrir</a></td>
+                    <td><?= date('d/m/Y', strtotime($prod['dataCadastro'])) ?></td>
                     <td>
-                        <button onclick='abrirEdicao(<?= json_encode($nov) ?>)'>✏️ Editar</button>
-                        <a href="?delete=<?= $nov['idNovidade'] ?>" onclick="return confirm('Tem certeza que deseja excluir esta novidade?')">🗑️ Excluir</a>
+                        <button onclick="editarProduto(<?= $prod['idProduto'] ?>)">✏️ Editar</button>
+                        <button onclick="excluirProduto(<?= $prod['idProduto'] ?>)">🗑️ Excluir</button>
                     </td>
                 </tr>
-            <?php endforeach; ?>
-        </tbody>
-    </table>
-</main>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+    </main>
+</div>
 
-<!-- Modal Adicionar / Editar -->
-<div class="modal" id="modalAdd">
-    <div class="modal-content">
-        <h3 id="modalTitulo">Adicionar Nova Novidade</h3>
-        <form action="" method="POST" enctype="multipart/form-data">
-            <input type="hidden" name="editar_id" id="editar_id">
-            <input type="hidden" name="imagem_atual" id="imagem_atual">
-
-            <label>Título:</label>
-            <input type="text" name="titulo" id="titulo" required>
-
-            <label>Conteúdo:</label>
-            <textarea name="conteudo" id="conteudo" required></textarea>
-
-            <label>Link:</label>
-            <input type="url" name="link" id="link" placeholder="https://exemplo.com" required>
-
-            <label>Imagem (arquivo):</label>
-            <input type="file" name="imagem" accept="image/*">
-
-            <label>OU Link da imagem:</label>
-            <input type="url" name="imagem_url" id="imagem_url" placeholder="https://exemplo.com/imagem.webp">
-
-            <div class="modal-buttons">
-                <button type="submit">Salvar</button>
-                <button type="button" onclick="fecharModal()">Cancelar</button>
-            </div>
+<div id="modalEditar" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); justify-content:center; align-items:center;">
+    <div style="background:#fff; padding:20px; border-radius:5px; width:400px;">
+        <h2>Editar Produto</h2>
+        <form id="formEditar">
+            <input type="hidden" name="idProduto" id="editId">
+            <label>Nome:</label><br>
+            <input type="text" name="nomeProduto" id="editNome" style="width:100%;"><br><br>
+            <label>Link:</label><br>
+            <input type="text" name="linkProduto" id="editLink" style="width:100%;"><br><br>
+            <label>Categoria:</label><br>
+            <select name="idCategoria" id="editCategoria" style="width:100%;">
+                <?php foreach($categorias as $cat): ?>
+                    <option value="<?= $cat['idCategoria'] ?>"><?= htmlspecialchars($cat['nomeCategoria']) ?></option>
+                <?php endforeach; ?>
+            </select><br><br>
+            <label>Subcategoria:</label><br>
+            <select name="idSubcategoria" id="editSubcategoria" style="width:100%;">
+                <?php foreach($subcategorias as $sub): ?>
+                    <option value="<?= $sub['idSubcategoria'] ?>"><?= htmlspecialchars($sub['nomeSubcategoria']) ?></option>
+                <?php endforeach; ?>
+            </select><br><br>
+            <button type="submit">Salvar</button>
+            <button type="button" onclick="fecharModal()">Cancelar</button>
         </form>
     </div>
 </div>
 
 <script>
-function abrirModal() {
-    document.getElementById("modalAdd").style.display = "flex";
-    document.getElementById("modalTitulo").innerText = "Adicionar Nova Novidade";
-    document.querySelector("form").reset();
-    document.getElementById("editar_id").value = "";
+// ======== FILTROS ========
+function aplicarFiltros() {
+    const id = document.getElementById("filtroID").value.toLowerCase();
+    const titulo = document.getElementById("filtroTitulo").value.toLowerCase();
+    const data = document.getElementById("filtroData").value.toLowerCase();
+    const rows = document.querySelectorAll("#novidadesTable tbody tr");
+    rows.forEach(row => {
+        const cID = row.cells[1].textContent.toLowerCase();
+        const cTitulo = row.cells[2].textContent.toLowerCase();
+        const cData = row.cells[7].textContent.toLowerCase();
+        if ((id === "" || cID.includes(id)) &&
+            (titulo === "" || cTitulo.includes(titulo)) &&
+            (data === "" || cData.includes(data))) {
+            row.style.display = "";
+        } else {
+            row.style.display = "none";
+        }
+    });
+}
+function limparFiltros() {
+    document.getElementById("filtroID").value = "";
+    document.getElementById("filtroTitulo").value = "";
+    document.getElementById("filtroData").value = "";
+    aplicarFiltros();
 }
 
-function fecharModal() {
-    document.getElementById("modalAdd").style.display = "none";
+// ======== FILTRO POR CATEGORIA ========
+function toggleSubcategoria(catId){
+    const el = document.getElementById("sub-"+catId);
+    el.style.display = el.style.display === "block" ? "none" : "block";
+}
+function filtrarCategoria(catId, subId){
+    const rows = document.querySelectorAll("#novidadesTable tbody tr");
+    rows.forEach(row => {
+        if(catId === null){ row.style.display = ""; return; }
+        const rowCat = row.dataset.idcat;
+        const rowSub = row.dataset.idsub;
+        if(rowCat == catId && (!subId || rowSub == subId)){ row.style.display=""; } else { row.style.display="none"; }
+    });
 }
 
-function abrirEdicao(nov) {
-    abrirModal();
-    document.getElementById("modalTitulo").innerText = "Editar Novidade";
-    document.getElementById("editar_id").value = nov.idNovidade;
-    document.getElementById("titulo").value = nov.titulo;
-    document.getElementById("conteudo").value = nov.conteudo;
-    document.getElementById("link").value = nov.linkNovidade;
-    document.getElementById("imagem_url").value = "";
-    document.getElementById("imagem_atual").value = nov.imagemNovidade;
+// ======== Checkboxes ========
+function marcarTodos(source){
+    document.querySelectorAll('.checkItem').forEach(c => c.checked = source.checked);
 }
-// ======== Exibir alerta e ocultar automaticamente ======== //
+
+// ======== CRUD ========
+function editarProduto(id){
+    const row = document.querySelector(`tr[data-id='${id}']`);
+    document.getElementById('editId').value = id;
+    document.getElementById('editNome').value = row.cells[2].textContent;
+    document.getElementById('editLink').value = row.cells[6].querySelector('a')?.href || '';
+    document.getElementById('editCategoria').value = row.dataset.idcat;
+    document.getElementById('editSubcategoria').value = row.dataset.idsub;
+    document.getElementById('modalEditar').style.display = 'flex';
+}
+function fecharModal(){ document.getElementById('modalEditar').style.display = 'none'; }
+
+// AJAX unificado
+document.getElementById('formEditar').addEventListener('submit', function(e){
+    e.preventDefault();
+    const formData = new FormData(this);
+    formData.append('acao','editar');
+    fetch('', {method:'POST', body:formData})
+    .then(res=>res.json()).then(res=>{
+        if(res.sucesso){ location.reload(); } else { alert('Erro ao atualizar'); }
+    });
+});
+
+function excluirProduto(id){
+    if(!confirm('Deseja realmente excluir este produto?')) return;
+    const data = new URLSearchParams({acao:'excluir', idProduto:id});
+    fetch('', {method:'POST', body:data})
+    .then(res=>res.json()).then(res=>{
+        if(res.sucesso) location.reload(); else alert('Erro ao excluir');
+    });
+}
+
+function excluirSelecionados(){
+    const ids = Array.from(document.querySelectorAll('.checkItem:checked')).map(c=>c.value);
+    if(ids.length === 0) return alert('Selecione ao menos um item');
+    if(!confirm('Deseja excluir os produtos selecionados?')) return;
+    const data = new URLSearchParams({acao:'excluir_multiplos', ids: ids.join(',')});
+    fetch('', {method:'POST', body:data})
+    .then(res=>res.json()).then(res=>{
+        if(res.sucesso) location.reload(); else alert('Erro ao excluir');
+    });
+}
+
+// ======== Alerta automático ========
 document.addEventListener("DOMContentLoaded", () => {
     const alertBox = document.querySelector(".alert");
-
     if (alertBox) {
-        // Faz o alerta desaparecer depois de 3 segundos
         setTimeout(() => {
             alertBox.style.opacity = "0";
             alertBox.style.transform = "translateY(-10px)";
-            setTimeout(() => alertBox.remove(), 300); // remove do DOM depois da animação
+            setTimeout(() => alertBox.remove(), 300);
         }, 3000);
-
-        // Remove o parâmetro ?msg= da URL para não reaparecer após atualização
-        const url = new URL(window.location);
-        if (url.searchParams.has("msg")) {
-            url.searchParams.delete("msg");
-            window.history.replaceState({}, document.title, url);
-        }
     }
 });
-
 </script>
 
 </body>
 </html>
+
