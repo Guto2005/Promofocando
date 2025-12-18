@@ -8,12 +8,19 @@ if (!isset($_SESSION['usuario'])) {
 }
 
 // Contagens das tabelas
-$totalPromocoes = $pdo->query("SELECT COUNT(*) FROM promocoes")->fetchColumn();
-$totalNovidades = $pdo->query("SELECT COUNT(*) FROM novidades")->fetchColumn();
 $totalProdutos = $pdo->query("SELECT COUNT(*) FROM produtos")->fetchColumn();
 $totalLojas = $pdo->query("SELECT COUNT(*) FROM lojas")->fetchColumn();
 $totalCategorias = $pdo->query("SELECT COUNT(*) FROM categorias")->fetchColumn();
 $totalSubcategorias = $pdo->query("SELECT COUNT(*) FROM subcategorias")->fetchColumn();
+$totalPromocoes = $pdo->query("SELECT COUNT(*) FROM promocoes")->fetchColumn();
+
+// Novidades agora vêm da tabela produtos
+$totalNovidades = $pdo->query("
+    SELECT COUNT(*) 
+    FROM produtos
+    WHERE dataCadastro >= DATE_SUB(NOW(), INTERVAL 10 DAY)
+")->fetchColumn();
+
 
 $dataHoje = date('d/m/Y H:i');
 ?>
@@ -24,6 +31,7 @@ $dataHoje = date('d/m/Y H:i');
     <meta charset="UTF-8">
     <title>Painel Administrativo - Promofocando</title>
     <link rel="stylesheet" href="../../assets/css/admin.css">
+
     <style>
         main {
             display: flex;
@@ -47,7 +55,7 @@ $dataHoje = date('d/m/Y H:i');
         }
 
         .card p {
-            font-size: 1.5em;
+            font-size: 1.6em;
             font-weight: bold;
             color: #000;
         }
@@ -69,7 +77,6 @@ $dataHoje = date('d/m/Y H:i');
         <a href="../dashboard/">🏠 Dashboard</a>
         <a href="../produtos/">📦 Produtos</a>
         <a href="../promocoes/">💰 Promoções</a>
-        <a href="../novidades/">📰 Novidades</a>
         <a href="../lojas/">🏪 Lojas</a>
         <a href="../categorias/">📂 Categorias</a>
         <a href="../subcategorias/">📁 Subcategorias</a>
@@ -78,26 +85,32 @@ $dataHoje = date('d/m/Y H:i');
 </header>
 
 <main>
+
     <div class="card">
         <h3>Total de Produtos</h3>
         <p><?= $totalProdutos ?></p>
     </div>
+
     <div class="card">
         <h3>Total de Lojas</h3>
         <p><?= $totalLojas ?></p>
     </div>
+
     <div class="card">
         <h3>Total de Categorias</h3>
         <p><?= $totalCategorias ?></p>
     </div>
+
     <div class="card">
         <h3>Total de Subcategorias</h3>
         <p><?= $totalSubcategorias ?></p>
     </div>
+
     <div class="card">
         <h3>Total de Promoções</h3>
         <p><?= $totalPromocoes ?></p>
     </div>
+
     <div class="card">
         <h3>Total de Novidades</h3>
         <p><?= $totalNovidades ?></p>
@@ -107,6 +120,7 @@ $dataHoje = date('d/m/Y H:i');
         <h3>Último acesso</h3>
         <p><?= $dataHoje ?></p>
     </section>
+
 </main>
 
 </body>
