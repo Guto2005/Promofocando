@@ -265,6 +265,8 @@ section.conteudo {
 
 <section class="conteudo">
 
+<h2>Lista de Promoções</h2>
+
 <button class="btn-add" onclick="abrirModalNova()">➕ Nova Promoção</button>
 
 <form method="POST">
