@@ -137,7 +137,7 @@ button { cursor:pointer; margin:2px; }
 <header>
     <h1>Gerenciar Lojas</h1>
     <nav>
-        <a href="../dashboard/">🏠 Dashboard</a>
+          <a href="../dashboard/">🏠 Dashboard</a>
         <a href="../produtos/">📦 Produtos</a>
         <a href="../promocoes/">💰 Promoções</a>
         <a href="../novidades/">📰 Novidades</a>
