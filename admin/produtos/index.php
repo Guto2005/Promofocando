@@ -7,105 +7,99 @@ if (!isset($_SESSION['usuario'])) {
     exit;
 }
 
-/* ==========================
-   Carregar dados base
-========================== */
-$categorias = $pdo->query("SELECT * FROM categorias ORDER BY nomeCategoria ASC")->fetchAll(PDO::FETCH_ASSOC);
-$subcategorias = $pdo->query("SELECT * FROM subcategorias ORDER BY nomeSubcategoria ASC")->fetchAll(PDO::FETCH_ASSOC);
-$lojas = $pdo->query("SELECT * FROM lojas ORDER BY nomeLoja ASC")->fetchAll(PDO::FETCH_ASSOC);
+/* ================================
+   AÇÕES
+================================ */
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
-/* ==========================
-   ADICIONAR PRODUTO
-========================== */
-if (isset($_POST['add_produto'])) {
+    /* ADICIONAR */
+    if (isset($_POST['acao']) && $_POST['acao'] === 'salvar') {
 
-    $idCategoria = $_POST['idCategoria'];
-    $idSubcategoria = $_POST['idSubcategoria'] !== "" ? $_POST['idSubcategoria'] : null;
-    $idLoja = $_POST['idLoja'];
-    $nomeProduto = $_POST['nomeProduto'];
-    $descricaoProduto = $_POST['descricaoProduto'];
-    $precoProduto = $_POST['precoProduto'] !== "" ? $_POST['precoProduto'] : null;
-    $imagemProduto = $_POST['imagemProduto'];
-    $linkProduto = $_POST['linkProduto'];
+        $stmt = $pdo->prepare("
+            INSERT INTO produtos
+            (idCategoria, idSubcategoria, idLoja, nomeProduto, descricaoProduto,
+             precoProduto, imagemProduto, categoriaProduto, subcategoriaProduto,
+             lojaProduto, linkProduto, dataCadastro)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+        ");
 
-    $categoriaTexto = $pdo->query("SELECT nomeCategoria FROM categorias WHERE idCategoria=$idCategoria")->fetchColumn();
-    $subcategoriaTexto = $idSubcategoria
-        ? $pdo->query("SELECT nomeSubcategoria FROM subcategorias WHERE idSubcategoria=$idSubcategoria")->fetchColumn()
-        : null;
-    $lojaTexto = $pdo->query("SELECT nomeLoja FROM lojas WHERE idLoja=$idLoja")->fetchColumn();
+        $categoriaTxt = $pdo->query("SELECT nomeCategoria FROM categorias WHERE idCategoria=".$_POST['idCategoria'])->fetchColumn();
+        $subTxt = $_POST['idSubcategoria']
+            ? $pdo->query("SELECT nomeSubcategoria FROM subcategorias WHERE idSubcategoria=".$_POST['idSubcategoria'])->fetchColumn()
+            : null;
+        $lojaTxt = $pdo->query("SELECT nomeLoja FROM lojas WHERE idLoja=".$_POST['idLoja'])->fetchColumn();
 
-    $stmt = $pdo->prepare("
-        INSERT INTO produtos
-        (idCategoria, idSubcategoria, idLoja, nomeProduto, descricaoProduto, precoProduto,
-         imagemProduto, categoriaProduto, subcategoriaProduto, lojaProduto, linkProduto, dataCadastro)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
-    ");
+        $stmt->execute([
+            $_POST['idCategoria'],
+            $_POST['idSubcategoria'] ?: null,
+            $_POST['idLoja'],
+            $_POST['nomeProduto'],
+            $_POST['descricaoProduto'],
+            $_POST['precoProduto'] ?: null,
+            $_POST['imagemProduto'],
+            $categoriaTxt,
+            $subTxt,
+            $lojaTxt,
+            $_POST['linkProduto']
+        ]);
 
-    $stmt->execute([
-        $idCategoria, $idSubcategoria, $idLoja, $nomeProduto, $descricaoProduto,
-        $precoProduto, $imagemProduto, $categoriaTexto, $subcategoriaTexto,
-        $lojaTexto, $linkProduto
-    ]);
+        header("Location: index.php");
+        exit;
+    }
 
-    header("Location: index.php");
-    exit;
+    /* EDITAR */
+    if (isset($_POST['acao']) && $_POST['acao'] === 'editar') {
+
+        $stmt = $pdo->prepare("
+            UPDATE produtos SET
+                idCategoria=?, idSubcategoria=?, idLoja=?, nomeProduto=?,
+                descricaoProduto=?, precoProduto=?, imagemProduto=?,
+                categoriaProduto=?, subcategoriaProduto=?, lojaProduto=?,
+                linkProduto=?
+            WHERE idProduto=?
+        ");
+
+        $categoriaTxt = $pdo->query("SELECT nomeCategoria FROM categorias WHERE idCategoria=".$_POST['idCategoria'])->fetchColumn();
+        $subTxt = $_POST['idSubcategoria']
+            ? $pdo->query("SELECT nomeSubcategoria FROM subcategorias WHERE idSubcategoria=".$_POST['idSubcategoria'])->fetchColumn()
+            : null;
+        $lojaTxt = $pdo->query("SELECT nomeLoja FROM lojas WHERE idLoja=".$_POST['idLoja'])->fetchColumn();
+
+        $stmt->execute([
+            $_POST['idCategoria'],
+            $_POST['idSubcategoria'] ?: null,
+            $_POST['idLoja'],
+            $_POST['nomeProduto'],
+            $_POST['descricaoProduto'],
+            $_POST['precoProduto'] ?: null,
+            $_POST['imagemProduto'],
+            $categoriaTxt,
+            $subTxt,
+            $lojaTxt,
+            $_POST['linkProduto'],
+            $_POST['idProduto']
+        ]);
+
+        header("Location: index.php");
+        exit;
+    }
+
+    /* DELETAR MÚLTIPLOS */
+    if (isset($_POST['acao']) && $_POST['acao'] === 'deletarMultiplos' && !empty($_POST['selecionados'])) {
+        $ids = implode(',', array_map('intval', $_POST['selecionados']));
+        $pdo->query("DELETE FROM produtos WHERE idProduto IN ($ids)");
+        header("Location: index.php");
+        exit;
+    }
 }
 
-/* ==========================
-   EDITAR PRODUTO
-========================== */
-if (isset($_POST['edit_produto'])) {
-
-    $idProduto = $_POST['idProduto'];
-    $idCategoria = $_POST['idCategoria'];
-    $idSubcategoria = $_POST['idSubcategoria'] !== "" ? $_POST['idSubcategoria'] : null;
-    $idLoja = $_POST['idLoja'];
-    $nomeProduto = $_POST['nomeProduto'];
-    $descricaoProduto = $_POST['descricaoProduto'];
-    $precoProduto = $_POST['precoProduto'] !== "" ? $_POST['precoProduto'] : null;
-    $imagemProduto = $_POST['imagemProduto'];
-    $linkProduto = $_POST['linkProduto'];
-
-    $categoriaTexto = $pdo->query("SELECT nomeCategoria FROM categorias WHERE idCategoria=$idCategoria")->fetchColumn();
-    $subcategoriaTexto = $idSubcategoria
-        ? $pdo->query("SELECT nomeSubcategoria FROM subcategorias WHERE idSubcategoria=$idSubcategoria")->fetchColumn()
-        : null;
-    $lojaTexto = $pdo->query("SELECT nomeLoja FROM lojas WHERE idLoja=$idLoja")->fetchColumn();
-
-    $stmt = $pdo->prepare("
-        UPDATE produtos SET
-            idCategoria=?, idSubcategoria=?, idLoja=?, nomeProduto=?, descricaoProduto=?,
-            precoProduto=?, imagemProduto=?, categoriaProduto=?, subcategoriaProduto=?,
-            lojaProduto=?, linkProduto=?
-        WHERE idProduto=?
-    ");
-
-    $stmt->execute([
-        $idCategoria, $idSubcategoria, $idLoja, $nomeProduto, $descricaoProduto,
-        $precoProduto, $imagemProduto, $categoriaTexto, $subcategoriaTexto,
-        $lojaTexto, $linkProduto, $idProduto
-    ]);
-
-    header("Location: index.php");
-    exit;
-}
-
-/* ==========================
-   DELETAR MÚLTIPLOS
-========================== */
-if (isset($_POST['delete_selected']) && !empty($_POST['selecionados'])) {
-    $ids = implode(",", array_map("intval", $_POST['selecionados']));
-    $pdo->query("DELETE FROM produtos WHERE idProduto IN ($ids)");
-    header("Location: index.php");
-    exit;
-}
-
-/* ==========================
+/* ================================
    FILTROS
-========================== */
-$busca = $_GET['busca'] ?? '';
-$filtroCategoria = $_GET['categoria'] ?? '';
-$filtroSubcategoria = $_GET['subcategoria'] ?? '';
+================================ */
+$busca       = $_GET['busca'] ?? null;
+$categoria   = $_GET['categoria'] ?? null;
+$subcategoria= $_GET['subcategoria'] ?? null;
+$loja        = $_GET['loja'] ?? null;
 
 $sql = "SELECT * FROM produtos WHERE 1=1";
 $params = [];
@@ -114,22 +108,30 @@ if ($busca) {
     $sql .= " AND nomeProduto LIKE ?";
     $params[] = "%$busca%";
 }
-
-if ($filtroCategoria) {
+if ($categoria) {
     $sql .= " AND idCategoria = ?";
-    $params[] = $filtroCategoria;
+    $params[] = $categoria;
 }
-
-if ($filtroSubcategoria) {
+if ($subcategoria) {
     $sql .= " AND idSubcategoria = ?";
-    $params[] = $filtroSubcategoria;
+    $params[] = $subcategoria;
+}
+if ($loja) {
+    $sql .= " AND idLoja = ?";
+    $params[] = $loja;
 }
 
 $sql .= " ORDER BY idProduto DESC";
-
 $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
 $produtos = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+/* ================================
+   BASE
+================================ */
+$categorias = $pdo->query("SELECT * FROM categorias ORDER BY nomeCategoria")->fetchAll(PDO::FETCH_ASSOC);
+$subcategorias = $pdo->query("SELECT * FROM subcategorias ORDER BY nomeSubcategoria")->fetchAll(PDO::FETCH_ASSOC);
+$lojas = $pdo->query("SELECT * FROM lojas ORDER BY nomeLoja")->fetchAll(PDO::FETCH_ASSOC);
 ?>
 
 <!DOCTYPE html>
@@ -140,113 +142,86 @@ $produtos = $stmt->fetchAll(PDO::FETCH_ASSOC);
 <link rel="stylesheet" href="../../assets/css/admin.css">
 
 <style>
-main.layout-admin { display:flex; gap:20px; }
-aside.sidebar {
-    width:260px; background:#f5f5f5; padding:15px; border-radius:6px;
-}
-aside.sidebar h3 { margin:15px 0 8px; }
-aside.sidebar a {
-    display:block; padding:8px; margin-bottom:5px;
-    background:#fff; border-radius:4px; text-decoration:none; color:#000;
-}
-aside.sidebar a:hover { background:#eaeaea; }
-aside.sidebar input, aside.sidebar select {
-    width:100%; padding:8px; margin-bottom:10px;
-}
-section.conteudo { flex:1; }
+main.layout-admin{display:flex;gap:20px}
+aside.sidebar{width:260px;background:#f5f5f5;padding:15px;border-radius:6px}
+aside.sidebar h3{margin:15px 0 8px}
+aside.sidebar a{display:block;padding:8px;margin-bottom:5px;background:#fff;border-radius:4px;text-decoration:none;color:#000}
+aside.sidebar a:hover{background:#eaeaea}
+aside.sidebar input{width:100%;padding:8px;margin-bottom:10px}
+section.conteudo{flex:1}
 
-.thumb { max-width:100px; max-height:100px; border-radius:5px; object-fit:cover; }
+.thumb{max-width:80px;border-radius:5px}
 
-.modal {
-    display:none; position:fixed; inset:0;
-    background:rgba(0,0,0,.5);
-    justify-content:center; align-items:center; z-index:1000;
-}
-.modal-content {
-    background:#fff; padding:20px;
-    max-width:600px; width:90%; border-radius:10px;
-}
+.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);justify-content:center;align-items:center;z-index:999}
+.modal-content{background:#fff;padding:20px;width:520px;border-radius:8px}
+.modal-content label{display:block;margin-top:10px}
+.modal-content input,.modal-content textarea,.modal-content select{width:100%;padding:8px;margin-top:5px}
+.modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:15px}
 </style>
 </head>
 
 <body>
 
 <header>
-    <h1>Gerenciar Produtos</h1>
-    <nav>
-        <a href="../dashboard/">🏠 Dashboard</a>
-        <a href="../produtos/">📦 Produtos</a>
-        <a href="../promocoes/">💰 Promoções</a>
-        <a href="../novidades/">📰 Novidades</a>
-        <a href="../lojas/">🏪 Lojas</a>
-        <a href="../categorias/">📂 Categorias</a>
-        <a href="../subcategorias/">📁 Subcategorias</a>
-        <a href="../logout.php">🚪 Sair</a>
-    </nav>
+<h1>Gerenciar Produtos</h1>
+<nav>
+<a href="../dashboard/">🏠 Dashboard</a>
+<a href="../produtos/">📦 Produtos</a>
+<a href="../promocoes/">💰 Promoções</a>
+<a href="../novidades/">📰 Novidades</a>
+<a href="../lojas/">🏪 Lojas</a>
+<a href="../categorias/">📂 Categorias</a>
+<a href="../subcategorias/">📁 Subcategorias</a>
+<a href="../logout.php">🚪 Sair</a>
+</nav>
 </header>
 
 <main class="layout-admin">
 
 <aside class="sidebar">
-    <h3>Buscar Produto</h3>
-    <form method="GET">
-        <input type="text" name="busca" placeholder="Nome do produto..." value="<?= htmlspecialchars($busca) ?>">
+<h3>Buscar</h3>
+<form method="GET">
+<input type="text" name="busca" placeholder="Nome do produto..." value="<?= htmlspecialchars($busca ?? '') ?>">
+<button type="submit">🔍 Buscar</button>
+</form>
 
-        <select name="categoria" onchange="this.form.submit()">
-            <option value="">Todas as categorias</option>
-            <?php foreach ($categorias as $c): ?>
-                <option value="<?= $c['idCategoria'] ?>" <?= $filtroCategoria == $c['idCategoria'] ? 'selected' : '' ?>>
-                    <?= htmlspecialchars($c['nomeCategoria']) ?>
-                </option>
-            <?php endforeach; ?>
-        </select>
+<h3>Categorias</h3>
+<a href="index.php">📦 Todas</a>
+<?php foreach ($categorias as $c): ?>
+<a href="?categoria=<?= $c['idCategoria'] ?>">📂 <?= htmlspecialchars($c['nomeCategoria']) ?></a>
+<?php endforeach; ?>
 
-        <select name="subcategoria">
-            <option value="">Todas as subcategorias</option>
-            <?php foreach ($subcategorias as $s): ?>
-                <?php if (!$filtroCategoria || $s['idCategoria'] == $filtroCategoria): ?>
-                    <option value="<?= $s['idSubcategoria'] ?>" <?= $filtroSubcategoria == $s['idSubcategoria'] ? 'selected' : '' ?>>
-                        <?= htmlspecialchars($s['nomeSubcategoria']) ?>
-                    </option>
-                <?php endif; ?>
-            <?php endforeach; ?>
-        </select>
-
-        <button type="submit">🔍 Filtrar</button>
-    </form>
-
-    <h3>Categorias</h3>
-    <a href="index.php">📦 Mostrar tudo</a>
-    <?php foreach ($categorias as $c): ?>
-        <a href="?categoria=<?= $c['idCategoria'] ?>"><?= htmlspecialchars($c['nomeCategoria']) ?></a>
-    <?php endforeach; ?>
+<h3>Lojas</h3>
+<?php foreach ($lojas as $l): ?>
+<a href="?loja=<?= $l['idLoja'] ?>">🏪 <?= htmlspecialchars($l['nomeLoja']) ?></a>
+<?php endforeach; ?>
 </aside>
 
 <section class="conteudo">
 
 <h2>Lista de Produtos</h2>
 
-<form method="POST">
+<div class="botoes">
+<button class="btn-add" onclick="abrirModalNovo()">➕ Novo Produto</button>
+<button class="btn-delete">🗑️ Deletar Selecionados</button>
+</div>
 
-<button type="button" class="btn-add" onclick="abrirModalAdicionar()">➕ Adicionar Produto</button>
-<button type="submit" name="delete_selected">🗑 Deletar Selecionados</button>
+<form method="POST">
+<input type="hidden" name="acao" value="deletarMultiplos">
 
 <table>
 <thead>
 <tr>
-<th><input type="checkbox" onclick="toggleAll(this)"></th>
+<th><input type="checkbox" id="checkAll"></th>
 <th>ID</th>
-<th>Nome</th>
+<th>Produto</th>
 <th>Imagem</th>
 <th>Preço</th>
 <th>Categoria</th>
-<th>Subcategoria</th>
 <th>Loja</th>
-<th>Link</th>
 <th>Ações</th>
 </tr>
 </thead>
-
 <tbody>
 <?php foreach ($produtos as $p): ?>
 <tr>
@@ -254,47 +229,93 @@ section.conteudo { flex:1; }
 <td><?= $p['idProduto'] ?></td>
 <td><?= htmlspecialchars($p['nomeProduto']) ?></td>
 <td><img src="<?= $p['imagemProduto'] ?>" class="thumb"></td>
-<td><?= $p['precoProduto'] === null ? '—' : 'R$ '.number_format($p['precoProduto'],2,',','.') ?></td>
+<td><?= $p['precoProduto'] ? 'R$ '.number_format($p['precoProduto'],2,',','.') : '—' ?></td>
 <td><?= htmlspecialchars($p['categoriaProduto']) ?></td>
-<td><?= htmlspecialchars($p['subcategoriaProduto'] ?? '—') ?></td>
 <td><?= htmlspecialchars($p['lojaProduto']) ?></td>
-<td><a href="<?= $p['linkProduto'] ?>" target="_blank">Abrir</a></td>
-<td><button type="button" onclick='abrirModalEditar(<?= json_encode($p) ?>)'>✏ Editar</button></td>
+<td><button type="button" onclick='abrirModalEditar(<?= json_encode($p) ?>)'>✏️ Editar</button></td>
 </tr>
 <?php endforeach; ?>
 </tbody>
 </table>
 
 </form>
+
 </section>
 </main>
 
+<!-- MODAL -->
+<div id="modalProduto" class="modal">
+<div class="modal-content">
+<h2 id="tituloModal"></h2>
+
+<form method="POST">
+<input type="hidden" name="acao" id="acao">
+<input type="hidden" name="idProduto" id="idProduto">
+
+<label>Nome</label>
+<input type="text" name="nomeProduto" id="nomeProduto" required>
+
+<label>Descrição</label>
+<textarea name="descricaoProduto" id="descricaoProduto"></textarea>
+
+<label>Preço</label>
+<input type="number" step="0.01" name="precoProduto" id="precoProduto">
+
+<label>Imagem (URL)</label>
+<input type="text" name="imagemProduto" id="imagemProduto">
+
+<label>Categoria</label>
+<select name="idCategoria" id="idCategoria" required>
+<?php foreach ($categorias as $c): ?>
+<option value="<?= $c['idCategoria'] ?>"><?= htmlspecialchars($c['nomeCategoria']) ?></option>
+<?php endforeach; ?>
+</select>
+
+<label>Loja</label>
+<select name="idLoja" id="idLoja" required>
+<?php foreach ($lojas as $l): ?>
+<option value="<?= $l['idLoja'] ?>"><?= htmlspecialchars($l['nomeLoja']) ?></option>
+<?php endforeach; ?>
+</select>
+
+<label>Link</label>
+<input type="text" name="linkProduto" id="linkProduto">
+
+<div class="modal-actions">
+<button type="submit">💾 Salvar</button>
+<button type="button" onclick="fecharModal()">❌ Cancelar</button>
+</div>
+</form>
+</div>
+</div>
+
 <script>
-function toggleAll(src){document.querySelectorAll("tbody input[type=checkbox]").forEach(c=>c.checked=src.checked);}
-function openAdd(){document.getElementById("modalAdd").style.display="flex";}
-function closeAdd(){document.getElementById("modalAdd").style.display="none";}
-function openEdit(d){
-    document.getElementById("modalEdit").style.display="flex";
-    edit_idProduto.value=d.idProduto;
-    edit_nomeProduto.value=d.nomeProduto;
-    edit_descricaoProduto.value=d.descricaoProduto;
-    edit_precoProduto.value=d.precoProduto;
-    edit_imagemProduto.value=d.imagemProduto;
-    edit_linkProduto.value=d.linkProduto;
-    edit_idCategoria.value=d.idCategoria;
-    filterSubEdit();
-    edit_idSubcategoria.value=d.idSubcategoria;
-    edit_idLoja.value=d.idLoja;
+const modal=document.getElementById('modalProduto');
+
+function abrirModalNovo(){
+tituloModal.innerText='Novo Produto';
+acao.value='salvar';
+modal.style.display='flex';
+document.querySelector('#modalProduto form').reset();
 }
-function closeEdit(){document.getElementById("modalEdit").style.display="none";}
-function filterSubEdit(){
-    let c=edit_idCategoria.value;
-    document.querySelectorAll("#edit_idSubcategoria option").forEach(o=>{
-        o.style.display=o.value==""||o.dataset.cat==c?"block":"none";
-    });
+function abrirModalEditar(p){
+tituloModal.innerText='Editar Produto';
+acao.value='editar';
+idProduto.value=p.idProduto;
+nomeProduto.value=p.nomeProduto;
+descricaoProduto.value=p.descricaoProduto;
+precoProduto.value=p.precoProduto;
+imagemProduto.value=p.imagemProduto;
+idCategoria.value=p.idCategoria;
+idLoja.value=p.idLoja;
+linkProduto.value=p.linkProduto;
+modal.style.display='flex';
 }
+function fecharModal(){modal.style.display='none';}
+document.getElementById('checkAll').addEventListener('change',e=>{
+document.querySelectorAll("input[name='selecionados[]']").forEach(c=>c.checked=e.target.checked);
+});
 </script>
 
 </body>
 </html>
-

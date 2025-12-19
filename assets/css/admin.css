@@ -49,22 +49,25 @@ h2 {
 }
 
 /* ===== Botões ===== */
+.botoes {
+    display: flex;
+    flex-direction: column;
+    width: fit-content;
+}
+
 .btn-add {
-    background: #ffd700;
-    color: #000;
+    background: #2ecc71;
+    color: #fff;
     border: none;
-    padding: 10px 18px;
-    border-radius: 6px;
+    padding: 10px 14px;
+    border-radius: 5px;
     cursor: pointer;
-    font-weight: bold;
-    margin-bottom: 20px;
-    transition: background 0.2s;
+    margin-bottom: 15px;
 }
 
 .btn-add:hover {
-    background: #e6c200;
+    background: #27ae60;
 }
-
 /* ===== Tabela ===== */
 table {
     width: 100%;

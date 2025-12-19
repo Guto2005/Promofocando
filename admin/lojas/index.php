@@ -7,305 +7,321 @@ if (!isset($_SESSION['usuario'])) {
     exit;
 }
 
-// ======================
-// TRATAMENTO AJAX CRUD
-// ======================
+/* ================================
+   AÇÕES
+================================ */
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['acao'])) {
-    header('Content-Type: application/json');
-    $acao = $_POST['acao'];
 
-    // SALVAR
-    if ($acao === 'salvar') {
-        $nome = $_POST['nomeLoja'] ?? null;
-        $site = $_POST['siteLoja'] ?? null;
-        $logo = null;
-
-        if (!$nome || !$site) {
-            echo json_encode(['sucesso' => false, 'msg' => 'Dados incompletos']);
-            exit;
-        }
-
-        if (!empty($_POST['logoURL'])) {
-            $logo = $_POST['logoURL'];
-        } elseif (!empty($_FILES['logoUpload']['name'])) {
-            $arquivo = $_FILES['logoUpload'];
-            $nomeArq = time() . "_" . basename($arquivo['name']);
-            $destino = "../../assets/images/lojas/" . $nomeArq;
-            move_uploaded_file($arquivo['tmp_name'], $destino);
-            $logo = $nomeArq;
-        }
-
-        $stmt = $pdo->prepare("INSERT INTO lojas (nomeLoja, siteLoja, logoLoja) VALUES (?, ?, ?)");
-        $res = $stmt->execute([$nome, $site, $logo]);
-        echo json_encode(['sucesso' => $res]);
+    if ($_POST['acao'] === "salvar") {
+        $stmt = $pdo->prepare("
+            INSERT INTO lojas (nomeLoja, siteLoja, logoLoja)
+            VALUES (?, ?, ?)
+        ");
+        $stmt->execute([
+            $_POST['nomeLoja'],
+            $_POST['siteLoja'],
+            $_POST['logoLoja']
+        ]);
+        header("Location: index.php");
         exit;
     }
 
-    // EDITAR
-    if ($acao === 'editar') {
-        $id = $_POST['idLoja'] ?? null;
-        $nome = $_POST['nomeLoja'] ?? null;
-        $site = $_POST['siteLoja'] ?? null;
-        $logo = $_POST['logoAtual'] ?? null;
-
-        if (!$id || !$nome || !$site) {
-            echo json_encode(['sucesso' => false, 'msg' => 'Dados incompletos']);
-            exit;
-        }
-
-        if (!empty($_POST['logoURL'])) {
-            $logo = $_POST['logoURL'];
-        } elseif (!empty($_FILES['logoUpload']['name'])) {
-            $arquivo = $_FILES['logoUpload'];
-            $nomeArq = time() . "_" . basename($arquivo['name']);
-            $destino = "../../assets/images/lojas/" . $nomeArq;
-            move_uploaded_file($arquivo['tmp_name'], $destino);
-            $logo = $nomeArq;
-        }
-
-        $stmt = $pdo->prepare("UPDATE lojas SET nomeLoja=?, siteLoja=?, logoLoja=? WHERE idLoja=?");
-        $res = $stmt->execute([$nome, $site, $logo, $id]);
-        echo json_encode(['sucesso' => $res]);
+    if ($_POST['acao'] === "editar") {
+        $stmt = $pdo->prepare("
+            UPDATE lojas SET
+                nomeLoja=?,
+                siteLoja=?,
+                logoLoja=?
+            WHERE idLoja=?
+        ");
+        $stmt->execute([
+            $_POST['nomeLoja'],
+            $_POST['siteLoja'],
+            $_POST['logoLoja'],
+            $_POST['idLoja']
+        ]);
+        header("Location: index.php");
         exit;
     }
 
-    // EXCLUIR
-    if ($acao === 'excluir') {
-        $id = $_POST['idLoja'] ?? null;
-        if ($id) {
-            $stmt = $pdo->prepare("DELETE FROM lojas WHERE idLoja=?");
-            $res = $stmt->execute([$id]);
-            echo json_encode(['sucesso' => $res]);
-            exit;
-        } else {
-            echo json_encode(['sucesso' => false, 'msg' => 'ID inválido']);
-            exit;
-        }
-    }
-
-    // EXCLUIR MÚLTIPLOS
-    if ($acao === 'excluir_multiplos') {
-        $ids = $_POST['ids'] ?? null;
-        if ($ids) {
-            $idsArray = array_map('intval', explode(',', $ids));
-            $placeholders = implode(',', array_fill(0, count($idsArray), '?'));
-            $stmt = $pdo->prepare("DELETE FROM lojas WHERE idLoja IN ($placeholders)");
-            $res = $stmt->execute($idsArray);
-            echo json_encode(['sucesso' => $res]);
-            exit;
-        } else {
-            echo json_encode(['sucesso' => false, 'msg' => 'Nenhum ID enviado']);
-            exit;
-        }
+    if ($_POST['acao'] === "deletarMultiplas" && !empty($_POST['selecionadas'])) {
+        $ids = implode(',', array_map('intval', $_POST['selecionadas']));
+        $pdo->query("DELETE FROM lojas WHERE idLoja IN ($ids)");
+        header("Location: index.php");
+        exit;
     }
 }
 
-// ======================
-// CARREGAR DADOS PARA TABELA E SIDEBAR
-// ======================
-$lojas = $pdo->query("SELECT * FROM lojas ORDER BY nomeLoja ASC")->fetchAll(PDO::FETCH_ASSOC);
+/* ================================
+   FILTROS
+================================ */
+$buscaLoja = $_GET['busca'] ?? null;
+
+/* ================================
+   BUSCA LOJAS
+================================ */
+$sql = "SELECT * FROM lojas WHERE 1=1";
+$params = [];
+
+if (!empty($buscaLoja)) {
+    $sql .= " AND nomeLoja LIKE ?";
+    $params[] = "%$buscaLoja%";
+}
+
+$sql .= " ORDER BY nomeLoja ASC";
+$stmt = $pdo->prepare($sql);
+$stmt->execute($params);
+$lojas = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
 
 <!DOCTYPE html>
 <html lang="pt-br">
+
 <head>
-<meta charset="UTF-8">
-<title>Gerenciar Lojas</title>
-<link rel="stylesheet" href="../../assets/css/admin.css">
-<style>
-body { display:flex; margin:0; font-family:sans-serif; }
-header { width:100%; padding:10px; background:#222; color:#fff; position:fixed; top:0; left:0; z-index:10; }
-header h1 { margin:0; font-size:18px; display:inline-block; }
-header nav { display:inline-block; margin-left:20px; }
-header nav a { color:#fff; margin-right:10px; text-decoration:none; }
-#sidebar { width:220px; background:#f0f0f0; padding:10px; border-right:1px solid #ccc; margin-top:60px; height:calc(100vh - 60px); overflow-y:auto; }
-#sidebar h2 { margin-top:10px; }
-#sidebar button { width:100%; text-align:left; margin:3px 0; padding:5px; cursor:pointer; background:#fff; border:1px solid #ccc; }
-main { flex:1; padding:20px; margin-top:60px; overflow-x:auto; }
-table { width:100%; border-collapse:collapse; }
-table th, table td { border:1px solid #ccc; padding:5px; text-align:left; }
-.checkbox-col { text-align:center; width:40px; }
-button { cursor:pointer; margin:2px; }
-.modal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); justify-content:center; align-items:center; }
-.modal-content { background:#fff; padding:20px; border-radius:5px; width:400px; }
-.alert { padding:10px; margin-bottom:10px; }
-.success { background:#d4edda; color:#155724; }
-</style>
+    <meta charset="UTF-8">
+    <title>Gerenciar Lojas</title>
+    <link rel="stylesheet" href="../../assets/css/admin.css">
+
+    <style>
+        main.layout-admin {
+            display: flex;
+            gap: 20px;
+        }
+
+        aside.sidebar {
+            width: 260px;
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 6px;
+        }
+
+        aside.sidebar h3 {
+            margin: 15px 0 8px;
+        }
+
+        aside.sidebar a {
+            display: block;
+            padding: 8px;
+            margin-bottom: 5px;
+            background: #fff;
+            border-radius: 4px;
+            text-decoration: none;
+            color: #000;
+            font-size: 14px;
+        }
+
+        aside.sidebar a:hover {
+            background: #eaeaea;
+        }
+
+        aside.sidebar input {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 10px;
+        }
+
+        section.conteudo {
+            flex: 1;
+        }
+
+        .btn-add {
+            background: #2ecc71;
+            color: #fff;
+            border: none;
+            padding: 10px 14px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-bottom: 15px;
+        }
+
+        .btn-add:hover {
+            background: #27ae60;
+        }
+
+        .logo-thumb {
+            max-width: 60px;
+            max-height: 60px;
+            object-fit: contain;
+        }
+
+        /* MODAL */
+        .modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, .5);
+            justify-content: center;
+            align-items: center;
+            z-index: 999;
+        }
+
+        .modal-content {
+            background: #fff;
+            padding: 20px;
+            width: 420px;
+            border-radius: 8px;
+        }
+
+        .modal-content label {
+            display: block;
+            margin-top: 10px;
+        }
+
+        .modal-content input {
+            width: 100%;
+            padding: 8px;
+            margin-top: 5px;
+        }
+
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 15px;
+        }
+    </style>
 </head>
+
 <body>
 
-<header>
-    <h1>Gerenciar Lojas</h1>
-    <nav>
-          <a href="../dashboard/">🏠 Dashboard</a>
-        <a href="../produtos/">📦 Produtos</a>
-        <a href="../promocoes/">💰 Promoções</a>
-        <a href="../novidades/">📰 Novidades</a>
-        <a href="../lojas/">🏪 Lojas</a>
-        <a href="../categorias/">📂 Categorias</a>
-        <a href="../subcategorias/">📁 Subcategorias</a>
-        <a href="../logout.php">🚪 Sair</a>
-    </nav>
-</header>
+    <header>
+        <h1>Gerenciar Lojas</h1>
+        <nav>
+            <a href="../dashboard/">🏠 Dashboard</a>
+            <a href="../produtos/">📦 Produtos</a>
+            <a href="../promocoes/">💰 Promoções</a>
+            <a href="../novidades/">📰 Novidades</a>
+            <a href="../lojas/">🏪 Lojas</a>
+            <a href="../categorias/">📂 Categorias</a>
+            <a href="../subcategorias/">📁 Subcategorias</a>
+            <a href="../logout.php">🚪 Sair</a>
+        </nav>
+    </header>
 
-<div style="display:flex; width:100%; margin-top:60px;">
-    <div id="sidebar">
-        <h2>Geral – Lojas</h2>
-        <?php foreach($lojas as $loja): ?>
-            <button onclick="filtrarLoja(<?= $loja['idLoja'] ?>)">
-                <?= htmlspecialchars($loja['nomeLoja']) ?>
-            </button>
-        <?php endforeach; ?>
-        <button onclick="filtrarLoja(null)">Mostrar Todas</button>
-    </div>
+    <main class="layout-admin">
 
-    <main>
-        <button onclick="abrirModal('adicionar')">➕ Adicionar Loja</button>
-        <button onclick="excluirSelecionados()">🗑️ Excluir Selecionadas</button>
+        <aside class="sidebar">
+            <h3>Buscar Loja</h3>
+            <form method="GET">
+                <input type="text" name="busca" placeholder="Nome da loja..."
+                    value="<?= htmlspecialchars($buscaLoja ?? '') ?>">
+                <button type="submit">🔍 Buscar</button>
+            </form>
 
-        <table id="lojasTable">
-            <thead>
-                <tr>
-                    <th class="checkbox-col"><input type="checkbox" id="checkAll"></th>
-                    <th>ID</th>
-                    <th>Nome</th>
-                    <th>Site</th>
-                    <th>Logo</th>
-                    <th>Ações</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php foreach($lojas as $loja): ?>
-                <tr data-id="<?= $loja['idLoja'] ?>">
-                    <td class="checkbox-col"><input type="checkbox" class="checkItem" value="<?= $loja['idLoja'] ?>"></td>
-                    <td><?= $loja['idLoja'] ?></td>
-                    <td><?= htmlspecialchars($loja['nomeLoja']) ?></td>
-                    <td><a href="<?= htmlspecialchars($loja['siteLoja']) ?>" target="_blank">Visitar</a></td>
-                    <td>
-                        <?php if($loja['logoLoja']): ?>
-                            <img src="<?= str_starts_with($loja['logoLoja'],'http') ? $loja['logoLoja'] : '../../assets/images/lojas/'.$loja['logoLoja'] ?>" width="50">
-                        <?php else: ?> — <?php endif; ?>
-                    </td>
-                    <td>
-                        <button onclick="abrirModal('editar', <?= $loja['idLoja'] ?>, '<?= htmlspecialchars($loja['nomeLoja'], ENT_QUOTES) ?>', '<?= htmlspecialchars($loja['siteLoja'], ENT_QUOTES) ?>', '<?= htmlspecialchars($loja['logoLoja'], ENT_QUOTES) ?>')">✏️ Editar</button>
-                        <button onclick="excluirLoja(<?= $loja['idLoja'] ?>)">🗑️ Excluir</button>
-                    </td>
-                </tr>
-                <?php endforeach; ?>
-            </tbody>
-        </table>
+            <h3>Lojas</h3>
+            <a href="index.php">🏪 Todas</a>
+            <?php foreach ($lojas as $l): ?>
+                <a href="?busca=<?= urlencode($l['nomeLoja']) ?>">
+                    🏪 <?= htmlspecialchars($l['nomeLoja']) ?>
+                </a>
+            <?php endforeach; ?>
+        </aside>
+
+        <section class="conteudo">
+
+            <h2>Lista de Lojas</h2>
+
+            <div class="botoes">
+                <button class="btn-add" onclick="abrirModalNova()">➕ Nova Loja</button>
+                <button class="btn-delete">🗑️ Deletar Selecionadas</button>
+            </div>
+
+            <form method="POST">
+                <input type="hidden" name="acao" value="deletarMultiplas">
+
+                <table>
+                    <thead>
+                        <tr>
+                            <th><input type="checkbox" id="checkAll"></th>
+                            <th>ID</th>
+                            <th>Nome</th>
+                            <th>Site</th>
+                            <th>Logo</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($lojas as $l): ?>
+                            <tr>
+                                <td><input type="checkbox" name="selecionadas[]" value="<?= $l['idLoja'] ?>"></td>
+                                <td><?= $l['idLoja'] ?></td>
+                                <td><?= htmlspecialchars($l['nomeLoja']) ?></td>
+                                <td><a href="<?= htmlspecialchars($l['siteLoja']) ?>" target="_blank">Visitar</a></td>
+                                <td>
+                                    <?php if ($l['logoLoja']): ?>
+                                        <img src="<?= htmlspecialchars($l['logoLoja']) ?>" class="logo-thumb">
+                                    <?php else: ?> — <?php endif; ?>
+                                </td>
+                                <td>
+                                    <button type="button" onclick='abrirModalEditar(<?= json_encode($l) ?>)'>✏️ Editar</button>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+
+            </form>
+
+        </section>
     </main>
-</div>
 
-<!-- Modal -->
-<div id="modal" class="modal">
-    <div class="modal-content">
-        <h3 id="modalTitle">Adicionar Loja</h3>
-        <form id="formLoja" enctype="multipart/form-data">
-            <input type="hidden" name="acao" id="acaoForm">
-            <input type="hidden" name="idLoja" id="editIdLoja">
-            <input type="hidden" name="logoAtual" id="editLogoAtual">
+    <!-- MODAL -->
+    <div id="modalLoja" class="modal">
+        <div class="modal-content">
+            <h2 id="tituloModal"></h2>
 
-            <label>Nome:</label>
-            <input type="text" name="nomeLoja" id="editNomeLoja" required>
+            <form method="POST">
+                <input type="hidden" name="acao" id="acaoModal">
+                <input type="hidden" name="idLoja" id="idLoja">
 
-            <label>Site:</label>
-            <input type="url" name="siteLoja" id="editSiteLoja" required>
+                <label>Nome da Loja</label>
+                <input type="text" name="nomeLoja" id="nomeLoja" required>
 
-            <label>Logo Atual:</label>
-            <img id="editLogoPreview" width="70" style="display:block; margin-bottom:10px;">
+                <label>Site</label>
+                <input type="url" name="siteLoja" id="siteLoja" required>
 
-            <label>Nova Logo (URL):</label>
-            <input type="url" name="logoURL">
+                <label>Logo (URL)</label>
+                <input type="text" name="logoLoja" id="logoLoja">
 
-            <label>OU envie um arquivo:</label>
-            <input type="file" name="logoUpload" accept="image/*">
-
-            <button type="submit">Salvar</button>
-            <button type="button" onclick="fecharModal()">Cancelar</button>
-        </form>
+                <div class="modal-actions">
+                    <button type="submit">💾 Salvar</button>
+                    <button type="button" onclick="fecharModal()">❌ Cancelar</button>
+                </div>
+            </form>
+        </div>
     </div>
-</div>
 
-<script>
-const modal = document.getElementById('modal');
-const formLoja = document.getElementById('formLoja');
+    <script>
+        const modal = document.getElementById('modalLoja');
 
-// Abrir modal
-function abrirModal(acao, id='', nome='', site='', logo='') {
-    modal.style.display = 'flex';
-    document.getElementById('acaoForm').value = acao;
-    if (acao === 'editar') {
-        document.getElementById('modalTitle').textContent = 'Editar Loja';
-        document.getElementById('editIdLoja').value = id;
-        document.getElementById('editNomeLoja').value = nome;
-        document.getElementById('editSiteLoja').value = site;
-        document.getElementById('editLogoAtual').value = logo;
-        document.getElementById('editLogoPreview').src = logo.startsWith('http') ? logo : '../../assets/images/lojas/'+logo;
-        document.getElementById('editLogoPreview').style.display = 'block';
-    } else {
-        document.getElementById('modalTitle').textContent = 'Adicionar Loja';
-        formLoja.reset();
-        document.getElementById('editLogoPreview').style.display = 'none';
-    }
-}
+        function abrirModalNova() {
+            tituloModal.innerText = 'Nova Loja';
+            acaoModal.value = 'salvar';
+            document.querySelector('#modalLoja form').reset();
+            modal.style.display = 'flex';
+        }
 
-// Fechar modal
-function fecharModal() {
-    modal.style.display = 'none';
-}
+        function abrirModalEditar(l) {
+            tituloModal.innerText = 'Editar Loja';
+            acaoModal.value = 'editar';
+            idLoja.value = l.idLoja;
+            nomeLoja.value = l.nomeLoja;
+            siteLoja.value = l.siteLoja;
+            logoLoja.value = l.logoLoja;
+            modal.style.display = 'flex';
+        }
 
-// Submit via AJAX
-formLoja.addEventListener('submit', e => {
-    e.preventDefault();
-    const data = new FormData(formLoja);
-    fetch('', {method:'POST', body:data})
-        .then(res => res.json())
-        .then(res => {
-            if(res.sucesso) location.reload();
-            else alert('Erro: '+(res.msg||'Não foi possível salvar'));
+        function fecharModal() {
+            modal.style.display = 'none';
+        }
+
+        document.getElementById('checkAll').addEventListener('change', function() {
+            document.querySelectorAll('input[name="selecionadas[]"]').forEach(c => {
+                c.checked = this.checked;
+            });
         });
-});
-
-// Excluir loja
-function excluirLoja(id) {
-    if(!confirm('Deseja realmente excluir esta loja?')) return;
-    const data = new URLSearchParams({acao:'excluir', idLoja:id});
-    fetch('', {method:'POST', body:data})
-        .then(res=>res.json()).then(res=>{
-            if(res.sucesso) location.reload();
-            else alert('Erro ao excluir');
-        });
-}
-
-// Excluir selecionadas
-function excluirSelecionados() {
-    const ids = Array.from(document.querySelectorAll('.checkItem:checked')).map(c=>c.value);
-    if(ids.length===0) return alert('Selecione ao menos uma loja');
-    if(!confirm('Deseja excluir as lojas selecionadas?')) return;
-    const data = new URLSearchParams({acao:'excluir_multiplos', ids: ids.join(',')});
-    fetch('', {method:'POST', body:data})
-        .then(res=>res.json()).then(res=>{
-            if(res.sucesso) location.reload();
-            else alert('Erro ao excluir');
-        });
-}
-
-// Marcar todos
-document.getElementById('checkAll').addEventListener('change', function(){
-    document.querySelectorAll('.checkItem').forEach(cb => cb.checked = this.checked);
-});
-
-// Filtrar tabela ao clicar na sidebar
-function filtrarLoja(id) {
-    const rows = document.querySelectorAll('#lojasTable tbody tr');
-    rows.forEach(row => {
-        if(id === null) { row.style.display = ''; return; }
-        row.style.display = (row.dataset.id == id) ? '' : 'none';
-    });
-}
-</script>
+    </script>
 
 </body>
-</html>
 
+</html>
