@@ -65,9 +65,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['acao'])) {
 /* ================================
    FILTROS
 ================================ */
-$filtroCategoria = $_GET['categoria'] ?? null;
-$filtroStatus    = $_GET['status'] ?? null;
-$buscaProduto    = $_GET['busca'] ?? null;
+$filtroCategoria = $_GET['categoria'] ?? '';
+$filtroStatus    = $_GET['status'] ?? '';
+$buscaProduto    = $_GET['busca'] ?? '';
 
 /* ================================
    BUSCA PROMOÇÕES
@@ -84,12 +84,12 @@ $sql = "
 ";
 $params = [];
 
-if (!empty($filtroCategoria)) {
+if ($filtroCategoria !== '') {
     $sql .= " AND c.idCategoria = ?";
     $params[] = $filtroCategoria;
 }
 
-if ($filtroStatus !== null && $filtroStatus !== '') {
+if ($filtroStatus !== '') {
     $sql .= " AND p.ativo = ?";
     $params[] = $filtroStatus;
 }
@@ -105,7 +105,7 @@ $stmt->execute($params);
 $promocoes = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 /* ================================
-   CATEGORIAS (SIDEBAR)
+   CATEGORIAS
 ================================ */
 $categorias = $pdo->query("
     SELECT idCategoria, nomeCategoria
@@ -122,269 +122,259 @@ $produtos = $pdo->query("
     ORDER BY nomeProduto
 ")->fetchAll(PDO::FETCH_ASSOC);
 ?>
-
 <!DOCTYPE html>
 <html lang="pt-br">
+
 <head>
-<meta charset="UTF-8">
-<title>Gerenciar Promoções</title>
-<link rel="stylesheet" href="../../assets/css/admin.css">
+    <meta charset="UTF-8">
+    <title>Gerenciar Promoções</title>
+    <link rel="stylesheet" href="../../assets/css/admin.css">
 
-<style>
-main.layout-admin {
-    display: flex;
-    gap: 20px;
-}
+    <style>
+        main.layout-admin {
+            display: flex;
+            gap: 20px;
+        }
 
-aside.sidebar {
-    width: 260px;
-    background: #f5f5f5;
-    padding: 15px;
-    border-radius: 6px;
-}
+        aside.sidebar {
+            width: 260px;
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 6px;
+        }
 
-aside.sidebar h3 {
-    margin: 15px 0 8px;
-}
+        aside.sidebar input,
+        aside.sidebar select,
+        aside.sidebar button {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 10px;
+        }
 
-aside.sidebar a {
-    display: block;
-    padding: 8px;
-    margin-bottom: 5px;
-    background: #fff;
-    border-radius: 4px;
-    text-decoration: none;
-    color: #000;
-    font-size: 14px;
-}
+        section.conteudo {
+            flex: 1;
+        }
 
-aside.sidebar a:hover {
-    background: #eaeaea;
-}
+        .btn-add {
+            background: #2ecc71;
+            color: #fff;
+            border: none;
+            padding: 10px 14px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
 
-aside.sidebar input {
-    width: 100%;
-    padding: 8px;
-    margin-bottom: 10px;
-}
+        .btn-add:hover {
+            background: #27ae60;
+        }
 
-section.conteudo {
-    flex: 1;
-}
+        .modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, .5);
+            justify-content: center;
+            align-items: center;
+        }
 
-.btn-add {
-    background: #2ecc71;
-    color: #fff;
-    border: none;
-    padding: 10px 14px;
-    border-radius: 5px;
-    cursor: pointer;
-    margin-bottom: 15px;
-}
+        .modal-content {
+            background: #fff;
+            padding: 20px;
+            width: 420px;
+            border-radius: 8px;
+        }
 
-.btn-add:hover {
-    background: #27ae60;
-}
+        .modal-content label {
+            display: block;
+            margin-top: 10px;
+        }
 
-/* MODAL */
-.modal {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,.5);
-    justify-content: center;
-    align-items: center;
-    z-index: 999;
-}
+        .modal-content input,
+        .modal-content select {
+            width: 100%;
+            padding: 8px;
+        }
 
-.modal-content {
-    background: #fff;
-    padding: 20px;
-    width: 420px;
-    border-radius: 8px;
-}
-
-.modal-content label {
-    display: block;
-    margin-top: 10px;
-}
-
-.modal-content input,
-.modal-content select {
-    width: 100%;
-    padding: 8px;
-    margin-top: 5px;
-}
-
-.modal-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 10px;
-    margin-top: 15px;
-}
-</style>
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 15px;
+        }
+    </style>
 </head>
 
 <body>
 
-<header>
-    <h1>Gerenciar Promoções</h1>
-    <nav>
-          <a href="../dashboard/">🏠 Dashboard</a>
-        <a href="../produtos/">📦 Produtos</a>
-        <a href="../promocoes/">💰 Promoções</a>
-        <a href="../novidades/">📰 Novidades</a>
-        <a href="../lojas/">🏪 Lojas</a>
-        <a href="../categorias/">📂 Categorias</a>
-        <a href="../subcategorias/">📁 Subcategorias</a>
-        <a href="../logout.php">🚪 Sair</a>
-    </nav>
-</header>
+    <header>
+        <h1>Gerenciar Promoções</h1>
+        <nav>
+            <a href="../dashboard/">🏠 Dashboard</a>
+            <a href="../produtos/">📦 Produtos</a>
+            <a href="../promocoes/">💰 Promoções</a>
+            <a href="../novidades/">📰 Novidades</a>
+            <a href="../lojas/">🏪 Lojas</a>
+            <a href="../categorias/">📂 Categorias</a>
+            <a href="../subcategorias/">📁 Subcategorias</a>
+            <a href="../logout.php">🚪 Sair</a>
+        </nav>
+    </header>
 
-<main class="layout-admin">
+    <main class="layout-admin">
 
-<aside class="sidebar">
-    <h3>Status</h3>
-    <a href="index.php">📋 Todas</a>
-    <a href="?status=1">✅ Ativas</a>
-    <a href="?status=0">❌ Inativas</a>
+        <aside class="sidebar">
+            <form method="GET">
+                <h3>Buscar</h3>
 
-    <h3>Buscar Produto</h3>
-    <form method="GET">
-        <input type="text" name="busca" placeholder="Nome do produto..." value="<?= htmlspecialchars($buscaProduto ?? '') ?>">
-        <button type="submit">🔍 Buscar</button>
-    </form>
+                <input type="text" name="busca" placeholder="Produto..." value="<?= htmlspecialchars($buscaProduto) ?>">
 
-    <h3>Categorias</h3>
-    <?php foreach ($categorias as $c): ?>
-        <a href="?categoria=<?= $c['idCategoria'] ?>">
-            📂 <?= htmlspecialchars($c['nomeCategoria']) ?>
-        </a>
-    <?php endforeach; ?>
-</aside>
+                <select name="status">
+                    <option value="">Todas promoções</option>
+                    <option value="1" <?= $filtroStatus === '1' ? 'selected' : '' ?>>Ativas</option>
+                    <option value="0" <?= $filtroStatus === '0' ? 'selected' : '' ?>>Inativas</option>
+                </select>
 
-<section class="conteudo">
+                <select name="categoria">
+                    <option value="">Todas categorias</option>
+                    <?php foreach ($categorias as $c): ?>
+                        <option value="<?= $c['idCategoria'] ?>" <?= $filtroCategoria == $c['idCategoria'] ? 'selected' : '' ?>>
+                            <?= htmlspecialchars($c['nomeCategoria']) ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
 
-<h2>Lista de Promoções</h2>
+                <button type="submit">🔍 Buscar</button>
+            </form>
+        </aside>
 
-<button class="btn-add" onclick="abrirModalNova()">➕ Nova Promoção</button>
+        <section class="conteudo">
 
-<form method="POST">
-<input type="hidden" name="acao" value="deletarMultiplas">
+            <h2>Lista de Promoções</h2>
+            
+            
+            <form method="POST">
+                <div class="botoes">
+                    <button type="button" class="btn-add" onclick="abrirModalNova()">➕ Nova Promoção</button>
+                    <button class="btn-delete">🗑️ Deletar Selecionadas</button>
+                </div>
+                <input type="hidden" name="acao" value="deletarMultiplas">
 
-<table>
-<thead>
-<tr>
-<th><input type="checkbox" id="checkAll"></th>
-<th>ID</th>
-<th>Categoria</th>
-<th>Produto</th>
-<th>Preço</th>
-<th>Status</th>
-<th>Ações</th>
-</tr>
-</thead>
-<tbody>
-<?php foreach ($promocoes as $p): ?>
-<tr>
-<td><input type="checkbox" name="selecionadas[]" value="<?= $p['idPromocao'] ?>"></td>
-<td><?= $p['idPromocao'] ?></td>
-<td><?= htmlspecialchars($p['nomeCategoria']) ?></td>
-<td><?= htmlspecialchars($p['nomeProduto']) ?></td>
-<td>R$ <?= number_format($p['precoPromocional'], 2, ',', '.') ?></td>
-<td><?= $p['ativo'] ? '✅ Ativa' : '❌ Inativa' ?></td>
-<td>
-<button type="button" onclick='abrirModalEditar(<?= json_encode($p) ?>)'>✏️ Editar</button>
-</td>
-</tr>
-<button class="btn-delete">🗑️ Deletar Selecionadas</button>
-<?php endforeach; ?>
-</tbody>
-</table>
+                <table>
+                    <thead>
+                        <tr>
+                            <th><input type="checkbox" id="checkAll"></th>
+                            <th>ID</th>
+                            <th>Categoria</th>
+                            <th>Produto</th>
+                            <th>Preço</th>
+                            <th>Status</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($promocoes as $p): ?>
+                            <tr>
+                                <td><input type="checkbox" name="selecionadas[]" value="<?= $p['idPromocao'] ?>"></td>
+                                <td><?= $p['idPromocao'] ?></td>
+                                <td><?= htmlspecialchars($p['nomeCategoria']) ?></td>
+                                <td><?= htmlspecialchars($p['nomeProduto']) ?></td>
+                                <td>R$ <?= number_format($p['precoPromocional'], 2, ',', '.') ?></td>
+                                <td><?= $p['ativo'] ? '✅ Ativa' : '❌ Inativa' ?></td>
+                                <td><button type="button" onclick='abrirModalEditar(<?= json_encode($p) ?>)'>✏️</button></td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
 
-</form>
+            </form>
 
-</section>
-</main>
+        </section>
+    </main>
 
-<!-- MODAL -->
-<div id="modalPromocao" class="modal">
-<div class="modal-content">
-<h2 id="tituloModal"></h2>
+    <!-- MODAL -->
+    <div id="modalPromocao" class="modal">
+        <div class="modal-content">
+            <h2 id="tituloModal"></h2>
 
-<form method="POST">
-<input type="hidden" name="acao" id="acaoModal">
-<input type="hidden" name="idPromocao" id="idPromocao">
+            <form method="POST">
+                <input type="hidden" name="acao" id="acaoModal">
+                <input type="hidden" name="idPromocao" id="idPromocao">
 
-<label>Produto</label>
-<select name="idProduto" id="idProduto" required>
-<?php foreach ($produtos as $pr): ?>
-<option value="<?= $pr['idProduto'] ?>"><?= htmlspecialchars($pr['nomeProduto']) ?></option>
-<?php endforeach; ?>
-</select>
+                <label>Produto</label>
+                <select name="idProduto" id="idProduto">
+                    <?php foreach ($produtos as $pr): ?>
+                        <option value="<?= $pr['idProduto'] ?>"><?= htmlspecialchars($pr['nomeProduto']) ?></option>
+                    <?php endforeach; ?>
+                </select>
 
-<label>Preço Promocional</label>
-<input type="number" step="0.01" name="precoPromocional" id="precoPromocional" required>
+                <label>Preço</label>
+                <input type="number" step="0.01" name="precoPromocional" id="precoPromocional">
 
-<label>Data Início</label>
-<input type="date" name="dataInicio" id="dataInicio" required>
+                <label>Data Início</label>
+                <input type="date" name="dataInicio" id="dataInicio">
 
-<label>Data Fim</label>
-<input type="date" name="dataFim" id="dataFim" required>
+                <label>Data Fim</label>
+                <input type="date" name="dataFim" id="dataFim">
 
-<label>Status</label>
-<select name="ativo" id="ativo">
-<option value="1">Ativa</option>
-<option value="0">Inativa</option>
-</select>
+                <label>Status</label>
+                <select name="ativo" id="ativo">
+                    <option value="1">Ativa</option>
+                    <option value="0">Inativa</option>
+                </select>
 
-<label>Link</label>
-<input type="text" name="linkPromocao" id="linkPromocao">
+                <label>Link</label>
+                <input type="text" name="linkPromocao" id="linkPromocao">
 
-<div class="modal-actions">
-<button type="submit">💾 Salvar</button>
-<button type="button" onclick="fecharModal()">❌ Cancelar</button>
-</div>
-</form>
-</div>
-</div>
+                <div class="modal-actions">
+                    <button type="submit">💾 Salvar</button>
+                    <button type="button" onclick="fecharModal()">❌ Cancelar</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
-<script>
-const modal = document.getElementById('modalPromocao');
+    <script>
+        const modal = document.getElementById('modalPromocao');
 
-function abrirModalNova() {
-    document.getElementById('tituloModal').innerText = 'Nova Promoção';
-    document.getElementById('acaoModal').value = 'salvar';
-    document.querySelector('form').reset();
-    modal.style.display = 'flex';
-}
+        function abrirModalNova() {
+            tituloModal.innerText = 'Nova Promoção';
+            acaoModal.value = 'salvar';
+            modal.style.display = 'flex';
+        }
 
-function abrirModalEditar(p) {
-    document.getElementById('tituloModal').innerText = 'Editar Promoção';
-    document.getElementById('acaoModal').value = 'editar';
+        function abrirModalEditar(p) {
+            tituloModal.innerText = 'Editar Promoção';
+            acaoModal.value = 'editar';
+            idPromocao.value = p.idPromocao;
+            idProduto.value = p.idProduto;
+            precoPromocional.value = p.precoPromocional;
+            dataInicio.value = p.dataInicio;
+            dataFim.value = p.dataFim;
+            ativo.value = p.ativo;
+            linkPromocao.value = p.linkPromocao;
+            modal.style.display = 'flex';
+        }
 
-    idPromocao.value = p.idPromocao;
-    idProduto.value = p.idProduto;
-    precoPromocional.value = p.precoPromocional;
-    dataInicio.value = p.dataInicio;
-    dataFim.value = p.dataFim;
-    ativo.value = p.ativo;
-    linkPromocao.value = p.linkPromocao;
+        function fecharModal() {
+            modal.style.display = 'none';
+        }
 
-    modal.style.display = 'flex';
-}
+        document.getElementById('checkAll').addEventListener('change', function() {
+            document.querySelectorAll('input[name="selecionadas[]"]').forEach(c => c.checked = this.checked);
+        });
 
-function fecharModal() {
-    modal.style.display = 'none';
-}
+        document.querySelector('.btn-delete').addEventListener('click', function () {
+    const form = document.querySelector('form[method="POST"]');
+    const selecionados = form.querySelectorAll('input[name="selecionadas[]"]:checked');
 
-document.getElementById('checkAll').addEventListener('change', function () {
-    document.querySelectorAll('input[name="selecionadas[]"]').forEach(c => {
-        c.checked = this.checked;
-    });
+    if (selecionados.length === 0) {
+        return;
+    }
+
+    form.submit();
 });
-</script>
+    </script>
 
 </body>
-</html>
 
+</html>

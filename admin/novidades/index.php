@@ -1,4 +1,4 @@
-<?php
+<?php 
 session_start();
 require_once "../../assets/includes/conexao.php";
 
@@ -13,11 +13,11 @@ if (!isset($_SESSION['usuario'])) {
 /* ================================
    CONFIGURAÇÃO
 ================================ */
-$novidadeDias   = 10;
-$filtroCategoria = $_GET['categoria'] ?? null;
+$novidadeDias    = 10;
+$filtroCategoria = $_GET['categoria'] ?? '';
 
 /* ================================
-   CATEGORIAS (SIDEBAR)
+   CATEGORIAS (DROPDOWN)
 ================================ */
 $categorias = $pdo->query("
     SELECT idCategoria, nomeCategoria
@@ -42,7 +42,7 @@ $sql = "
 
 $params = [$novidadeDias];
 
-if (!empty($filtroCategoria)) {
+if ($filtroCategoria !== '') {
     $sql .= " AND p.idCategoria = ?";
     $params[] = $filtroCategoria;
 }
@@ -77,19 +77,11 @@ aside.sidebar h3 {
     margin: 15px 0 8px;
 }
 
-aside.sidebar a {
-    display: block;
+aside.sidebar select,
+aside.sidebar button {
+    width: 100%;
     padding: 8px;
-    margin-bottom: 5px;
-    background: #fff;
-    border-radius: 4px;
-    text-decoration: none;
-    color: #000;
-    font-size: 14px;
-}
-
-aside.sidebar a:hover {
-    background: #eaeaea;
+    margin-bottom: 10px;
 }
 
 section.conteudo {
@@ -125,16 +117,25 @@ section.conteudo {
 
 <main class="layout-admin">
 
+<!-- SIDEBAR COM DROPDOWN -->
 <aside class="sidebar">
-    <h3>Categorias</h3>
 
-    <a href="index.php">📋 Todas</a>
+<form method="GET">
+    <h3>Filtrar</h3>
 
-    <?php foreach ($categorias as $c): ?>
-        <a href="?categoria=<?= $c['idCategoria'] ?>">
-            📂 <?= htmlspecialchars($c['nomeCategoria']) ?>
-        </a>
-    <?php endforeach; ?>
+    <select name="categoria">
+        <option value="">Todas as categorias</option>
+        <?php foreach ($categorias as $c): ?>
+            <option value="<?= $c['idCategoria'] ?>"
+                <?= $filtroCategoria == $c['idCategoria'] ? 'selected' : '' ?>>
+                <?= htmlspecialchars($c['nomeCategoria']) ?>
+            </option>
+        <?php endforeach; ?>
+    </select>
+
+    <button type="submit">🔍 Aplicar filtro</button>
+</form>
+
 </aside>
 
 <section class="conteudo">
@@ -176,7 +177,7 @@ section.conteudo {
     </td>
     <td>
         <?php if (!empty($p['linkProduto'])): ?>
-            <a href="<?= $p['linkProduto'] ?>" target="_blank">Abrir</a>
+            <a href="<?= $p['linkProduto'] ?>" target="_blank">🔗</a>
         <?php endif; ?>
     </td>
     <td><?= date("d/m/Y", strtotime($p['dataCadastro'])) ?></td>
@@ -194,4 +195,5 @@ section.conteudo {
 
 </body>
 </html>
+
 

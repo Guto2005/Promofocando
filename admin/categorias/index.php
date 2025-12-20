@@ -22,8 +22,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['acao'])) {
     if ($_POST['acao'] === "editar") {
         $stmt = $pdo->prepare("
             UPDATE categorias 
-            SET nomeCategoria=? 
-            WHERE idCategoria=?
+            SET nomeCategoria = ?
+            WHERE idCategoria = ?
         ");
         $stmt->execute([
             $_POST['nomeCategoria'],
@@ -34,8 +34,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['acao'])) {
     }
 
     if ($_POST['acao'] === "deletarMultiplas" && !empty($_POST['selecionadas'])) {
-        $ids = implode(',', array_map('intval', $_POST['selecionadas']));
-        $pdo->query("DELETE FROM categorias WHERE idCategoria IN ($ids)");
+        $placeholders = implode(',', array_fill(0, count($_POST['selecionadas']), '?'));
+        $stmt = $pdo->prepare("DELETE FROM categorias WHERE idCategoria IN ($placeholders)");
+        $stmt->execute($_POST['selecionadas']);
         header("Location: index.php");
         exit;
     }
@@ -44,11 +45,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['acao'])) {
 /* ================================
    FILTROS
 ================================ */
-$buscaCategoria = $_GET['busca'] ?? null;
+$buscaCategoria  = $_GET['busca'] ?? '';
+$filtroCategoria = $_GET['categoria'] ?? '';
 
-/* ================================
-   BUSCA CATEGORIAS
-================================ */
 $sql = "SELECT * FROM categorias WHERE 1=1";
 $params = [];
 
@@ -57,11 +56,19 @@ if (!empty($buscaCategoria)) {
     $params[] = "%$buscaCategoria%";
 }
 
-$sql .= " ORDER BY nomeCategoria ASC";
+if (!empty($filtroCategoria)) {
+    $sql .= " AND nomeCategoria = ?";
+    $params[] = $filtroCategoria;
+}
 
+$sql .= " ORDER BY nomeCategoria ASC";
 $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
 $categorias = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+$listaCategorias = $pdo->query(
+    "SELECT nomeCategoria FROM categorias ORDER BY nomeCategoria ASC"
+)->fetchAll(PDO::FETCH_ASSOC);
 ?>
 
 <!DOCTYPE html>
@@ -84,25 +91,9 @@ aside.sidebar {
     border-radius: 6px;
 }
 
-aside.sidebar h3 {
-    margin: 15px 0 8px;
-}
-
-aside.sidebar a {
-    display: block;
-    padding: 8px;
-    margin-bottom: 5px;
-    background: #fff;
-    border-radius: 4px;
-    text-decoration: none;
-    color: #000;
-}
-
-aside.sidebar a:hover {
-    background: #eaeaea;
-}
-
-aside.sidebar input {
+aside.sidebar input,
+aside.sidebar select,
+aside.sidebar button {
     width: 100%;
     padding: 8px;
     margin-bottom: 10px;
@@ -112,7 +103,6 @@ section.conteudo {
     flex: 1;
 }
 
-/* BOTÃO VERDE – IGUAL AO DE PROMOÇÕES */
 .btn-add {
     background: #2ecc71;
     color: #fff;
@@ -120,11 +110,24 @@ section.conteudo {
     padding: 10px 14px;
     border-radius: 5px;
     cursor: pointer;
-    margin-bottom: 15px;
 }
 
-.btn-add:hover {
-    background: #27ae60;
+/* MODAL */
+.modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.5);
+    justify-content: center;
+    align-items: center;
+    z-index: 999;
+}
+
+.modal-content {
+    background: #fff;
+    padding: 20px;
+    border-radius: 6px;
+    min-width: 320px;
 }
 </style>
 </head>
@@ -132,74 +135,87 @@ section.conteudo {
 <body>
 
 <header>
-    <h1>Gerenciar Categorias</h1>
-    <nav>
-          <a href="../dashboard/">🏠 Dashboard</a>
-        <a href="../produtos/">📦 Produtos</a>
-        <a href="../promocoes/">💰 Promoções</a>
-        <a href="../novidades/">📰 Novidades</a>
-        <a href="../lojas/">🏪 Lojas</a>
-        <a href="../categorias/">📂 Categorias</a>
-        <a href="../subcategorias/">📁 Subcategorias</a>
-        <a href="../logout.php">🚪 Sair</a>
-    </nav>
+<h1>Gerenciar Categorias</h1>
+<nav>
+    <a href="../dashboard/">🏠 Dashboard</a>
+    <a href="../produtos/">📦 Produtos</a>
+    <a href="../promocoes/">💰 Promoções</a>
+    <a href="../novidades/">📰 Novidades</a>
+    <a href="../lojas/">🏪 Lojas</a>
+    <a href="../categorias/">📂 Categorias</a>
+    <a href="../subcategorias/">📁 Subcategorias</a>
+    <a href="../logout.php">🚪 Sair</a>
+</nav>
 </header>
 
 <main class="layout-admin">
 
 <!-- SIDEBAR -->
 <aside class="sidebar">
-
+<form method="GET">
     <h3>Buscar Categoria</h3>
-    <form method="GET">
-        <input type="text" name="busca" placeholder="Nome da categoria..." value="<?= htmlspecialchars($buscaCategoria ?? '') ?>">
-        <button type="submit">🔍 Buscar</button>
-    </form>
 
-    <h3>Categorias</h3>
-    <a href="index.php">📂 Mostrar todas</a>
+    <input type="text" name="busca" placeholder="Nome da categoria..."
+           value="<?= htmlspecialchars($buscaCategoria) ?>">
 
-    <?php foreach ($categorias as $c): ?>
-        <a href="?busca=<?= urlencode($c['nomeCategoria']) ?>">
-            <?= htmlspecialchars($c['nomeCategoria']) ?>
-        </a>
-    <?php endforeach; ?>
+    <select name="categoria">
+        <option value="">Todas categorias</option>
+        <?php foreach ($listaCategorias as $c): ?>
+            <option value="<?= htmlspecialchars($c['nomeCategoria']) ?>"
+                <?= $filtroCategoria === $c['nomeCategoria'] ? 'selected' : '' ?>>
+                <?= htmlspecialchars($c['nomeCategoria']) ?>
+            </option>
+        <?php endforeach; ?>
+    </select>
+
+    <button type="submit">🔍 Buscar</button>
+</form>
 </aside>
 
-<!-- CONTEÚDO -->
 <section class="conteudo">
 
 <h2>Lista de Categorias</h2>
 
-<button class="btn-add" onclick="abrirModalAdicionar()">➕ Adicionar Categoria</button>
-
 <form method="POST">
 <input type="hidden" name="acao" value="deletarMultiplas">
 
-<button class="btn-delete">🗑️ Deletar Selecionadas</button>
+<div class="botoes">
+    <button type="button" class="btn-add" onclick="abrirModalAdicionar()">
+        ➕ Adicionar Categoria
+    </button>
+    <button type="button" class="btn-delete" id="btnDelete">
+        🗑️ Deletar Selecionadas
+    </button>
+</div>
 
 <table>
 <thead>
 <tr>
-<th><input type="checkbox" id="checkAll"></th>
-<th>ID</th>
-<th>Nome</th>
-<th>Ações</th>
+    <th><input type="checkbox" id="checkAll"></th>
+    <th>ID</th>
+    <th>Nome</th>
+    <th>Ações</th>
 </tr>
 </thead>
 <tbody>
+
 <?php foreach ($categorias as $c): ?>
 <tr>
-<td><input type="checkbox" name="selecionadas[]" value="<?= $c['idCategoria'] ?>"></td>
-<td><?= $c['idCategoria'] ?></td>
-<td><?= htmlspecialchars($c['nomeCategoria']) ?></td>
-<td>
-<button type="button" onclick="abrirModalEditar('<?= $c['idCategoria'] ?>','<?= htmlspecialchars($c['nomeCategoria'], ENT_QUOTES) ?>')">
-✏️ Editar
-</button>
-</td>
+    <td><input type="checkbox" name="selecionadas[]" value="<?= $c['idCategoria'] ?>"></td>
+    <td><?= $c['idCategoria'] ?></td>
+    <td><?= htmlspecialchars($c['nomeCategoria']) ?></td>
+    <td>
+        <button type="button"
+            onclick="abrirModalEditar(
+                '<?= $c['idCategoria'] ?>',
+                '<?= htmlspecialchars($c['nomeCategoria'], ENT_QUOTES) ?>'
+            )">
+            ✏️
+        </button>
+    </td>
 </tr>
 <?php endforeach; ?>
+
 </tbody>
 </table>
 </form>
@@ -212,10 +228,11 @@ section.conteudo {
 <div class="modal-content">
 <h3>Adicionar Categoria</h3>
 <form method="POST">
-<input type="hidden" name="acao" value="salvar">
-<input type="text" name="nomeCategoria" required>
-<button type="submit">Salvar</button>
-<button type="button" onclick="fecharModais()">Cancelar</button>
+    <input type="hidden" name="acao" value="salvar">
+    <input type="text" name="nomeCategoria" required>
+    <br><br>
+    <button type="submit">Salvar</button>
+    <button type="button" onclick="fecharModais()">Cancelar</button>
 </form>
 </div>
 </div>
@@ -224,18 +241,29 @@ section.conteudo {
 <div class="modal-content">
 <h3>Editar Categoria</h3>
 <form method="POST">
-<input type="hidden" name="acao" value="editar">
-<input type="hidden" name="idCategoria" id="editId">
-<input type="text" name="nomeCategoria" id="editNome" required>
-<button type="submit">Salvar</button>
-<button type="button" onclick="fecharModais()">Cancelar</button>
+    <input type="hidden" name="acao" value="editar">
+    <input type="hidden" name="idCategoria" id="editId">
+    <input type="text" name="nomeCategoria" id="editNome" required>
+    <br><br>
+    <button type="submit">Salvar</button>
+    <button type="button" onclick="fecharModais()">Cancelar</button>
 </form>
 </div>
 </div>
 
 <script>
 document.getElementById('checkAll').addEventListener('change', function () {
-    document.querySelectorAll('input[name="selecionadas[]"]').forEach(c => c.checked = this.checked);
+    document.querySelectorAll('input[name="selecionadas[]"]').forEach(c => {
+        c.checked = this.checked;
+    });
+});
+
+document.getElementById('btnDelete').addEventListener('click', function () {
+    const form = document.querySelector('form[method="POST"]');
+    const selecionados = form.querySelectorAll('input[name="selecionadas[]"]:checked');
+    if (selecionados.length > 0) {
+        form.submit();
+    }
 });
 
 function abrirModalAdicionar() {
@@ -255,4 +283,3 @@ function fecharModais() {
 
 </body>
 </html>
-
