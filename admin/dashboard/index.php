@@ -79,6 +79,7 @@ $dataHoje = date('d/m/Y H:i');
         <a href="../promocoes/">💰 Promoções</a>
         <a href="../novidades/">📰 Novidades</a>
         <a href="../lojas/">🏪 Lojas</a>
+        <a href="../layout/">🧩 Layouts</a>
         <a href="../categorias/">📂 Categorias</a>
         <a href="../subcategorias/">📁 Subcategorias</a>
         <a href="../logout.php">🚪 Sair</a>

@@ -1,0 +1,12 @@
+[
+  {
+    "id": "1",
+    "layout": { "x": 0, "y": 0, "w": 4, "h": 2 },
+    "content": { "title": "Apple Store", "text": "Ofertas oficiais" }
+  },
+  {
+    "id": "2",
+    "layout": { "x": 4, "y": 0, "w": 4, "h": 2 },
+    "content": { "title": "Samsung Store", "text": "Promoções imperdíveis" }
+  }
+]
