@@ -210,15 +210,17 @@ $produtos = $pdo->query("
         <h1>Gerenciar Promoções</h1>
         <nav>
             <a href="../dashboard/">🏠 Dashboard</a>
-        <a href="../produtos/">📦 Produtos</a>
-        <a href="../promocoes/">💰 Promoções</a>
-        <a href="../novidades/">📰 Novidades</a>
-        <a href="../lojas/">🏪 Lojas</a>
-        <a href="../layout/">🧩 Layouts</a>
-        <a href="../categorias/">📂 Categorias</a>
-        <a href="../subcategorias/">📁 Subcategorias</a>
-        <a href="../logout.php">🚪 Sair</a>
+            <a href="../produtos/">📦 Produtos</a>
+            <a href="../promocoes/">💰 Promoções</a>
+            <a href="../novidades/">📰 Novidades</a>
+            <a href="../lojas/">🏪 Lojas</a>
+            <a href="../layout/">🧩 Layouts</a>
+            <a href="../components/">🧱 Components</a>
+            <a href="../categorias/">📂 Categorias</a>
+            <a href="../subcategorias/">📁 Subcategorias</a>
+            <a href="../logout.php">🚪 Sair</a>
         </nav>
+
     </header>
 
     <main class="layout-admin">
@@ -251,8 +253,8 @@ $produtos = $pdo->query("
         <section class="conteudo">
 
             <h2>Lista de Promoções</h2>
-            
-            
+
+
             <form method="POST">
                 <div class="botoes">
                     <button type="button" class="btn-add" onclick="abrirModalNova()">➕ Nova Promoção</button>
@@ -364,16 +366,16 @@ $produtos = $pdo->query("
             document.querySelectorAll('input[name="selecionadas[]"]').forEach(c => c.checked = this.checked);
         });
 
-        document.querySelector('.btn-delete').addEventListener('click', function () {
-    const form = document.querySelector('form[method="POST"]');
-    const selecionados = form.querySelectorAll('input[name="selecionadas[]"]:checked');
+        document.querySelector('.btn-delete').addEventListener('click', function() {
+            const form = document.querySelector('form[method="POST"]');
+            const selecionados = form.querySelectorAll('input[name="selecionadas[]"]:checked');
 
-    if (selecionados.length === 0) {
-        return;
-    }
+            if (selecionados.length === 0) {
+                return;
+            }
 
-    form.submit();
-});
+            form.submit();
+        });
     </script>
 
 </body>

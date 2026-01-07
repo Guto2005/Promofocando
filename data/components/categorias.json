@@ -1,0 +1,6 @@
+{
+    "tipo": "categorias",
+    "config": {
+        "mostrar_subcategorias": false
+    }
+}

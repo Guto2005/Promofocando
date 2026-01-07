@@ -9,7 +9,6 @@ if (!isset($_SESSION['usuario'])) {
 ?>
 <!DOCTYPE html>
 <html lang="pt-br">
-
 <head>
     <meta charset="UTF-8">
     <title>Editor de Layout - Promofocando</title>
@@ -27,7 +26,7 @@ if (!isset($_SESSION['usuario'])) {
             background: #fff;
             padding: 20px;
             border-radius: 10px;
-            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
         }
 
         .layout-header {
@@ -47,7 +46,6 @@ if (!isset($_SESSION['usuario'])) {
             border: none;
             border-radius: 6px;
             background: #d4af37;
-            /* dourado do seu tema */
             color: #000;
             font-weight: bold;
             cursor: pointer;
@@ -58,46 +56,41 @@ if (!isset($_SESSION['usuario'])) {
         }
     </style>
 </head>
-
 <body>
 
-    <header>
-        <h1>Painel Administrativo</h1>
-        <nav>
-            <a href="../dashboard/">🏠 Dashboard</a>
-            <a href="../produtos/">📦 Produtos</a>
-            <a href="../promocoes/">💰 Promoções</a>
-            <a href="../novidades/">📰 Novidades</a>
-            <a href="../lojas/">🏪 Lojas</a>
-            <a href="../layout/">🧩 Layouts</a>
-            <a href="../categorias/">📂 Categorias</a>
-            <a href="../subcategorias/">📁 Subcategorias</a>
-            <a href="../logout.php">🚪 Sair</a>
-        </nav>
-    </header>
+<header>
+    <h1>Painel Administrativo</h1>
+    <nav>
+        <a href="../dashboard/">🏠 Dashboard</a>
+        <a href="../produtos/">📦 Produtos</a>
+        <a href="../promocoes/">💰 Promoções</a>
+        <a href="../novidades/">📰 Novidades</a>
+        <a href="../lojas/">🏪 Lojas</a>
+        <a href="../layout/">🧩 Layouts</a>
+        <a href="../components/">🧱 Components</a>
+        <a href="../categorias/">📂 Categorias</a>
+        <a href="../subcategorias/">📁 Subcategorias</a>
+        <a href="../logout.php">🚪 Sair</a>
+    </nav>
+</header>
 
-    <main>
-
-        <div class="layout-container">
-            <div class="layout-header">
-                <h2>Editor de Layout da Homepage</h2>
-                <button onclick="salvar()">💾 Salvar layout</button>
-            </div>
-
-            <div style="margin-bottom: 15px;">
-                <button onclick="addBloco('loja')">➕ Loja</button>
-                <button onclick="addBloco('banner')">🖼 Banner</button>
-                <button onclick="addBloco('texto')">📝 Texto</button>
-            </div>
-
-
-            <div id="layout" class="layout"></div>
+<main>
+    <div class="layout-container">
+        <div class="layout-header">
+            <h2>Editor de Layout da Homepage</h2>
+            <button onclick="salvar()">💾 Salvar layout</button>
         </div>
 
-    </main>
+        <div style="margin-bottom: 15px;">
+            <button onclick="addBloco('loja')">➕ Loja</button>
+            <button onclick="addBloco('banner')">🖼 Banner</button>
+            <button onclick="addBloco('texto')">📝 Texto</button>
+        </div>
 
-    <script src="../../assets/scripts/layout.js"></script>
+        <div id="layout" class="layout"></div>
+    </div>
+</main>
 
+<script src="../../assets/scripts/layout.js"></script>
 </body>
-
 </html>
