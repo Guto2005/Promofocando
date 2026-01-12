@@ -1,6 +1,16 @@
 {
     "tipo": "categorias",
     "config": {
-        "mostrar_subcategorias": false
+        "limite": 12,
+        "mostrar_subcategorias": true,
+        "cor_fundo": "#ffffff",
+        "cor_texto": "#000000",
+        "cor_texto_bg": "#000000"
+    },
+    "titulo": "Categorias",
+    "layout": {
+        "linhas": 5,
+        "colunas": 5,
+        "limite": 25
     }
 }
